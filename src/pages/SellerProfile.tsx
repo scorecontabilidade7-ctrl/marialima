@@ -23,6 +23,8 @@ function fmtShort(v: number) {
   return `R$ ${v.toFixed(0)}`;
 }
 
+import { useVendedoresConfig } from "@/hooks/useVendedoresConfig";
+
 export default function SellerProfile() {
   const { name } = useParams<{ name: string }>();
   const navigate = useNavigate();
@@ -30,8 +32,9 @@ export default function SellerProfile() {
   const store = (searchParams.get("store") as "sobral" | "itapipoca") || "sobral";
   const sellerName = decodeURIComponent(name || "");
   const { data, isLoading } = useRawSalesData(store, sellerName);
+  const { data: configs } = useVendedoresConfig();
 
-  const photo = dashboardData?.ranking?.find((r) => r.vendedor === sellerName)?.url_foto;
+  const photo = configs?.find((c) => c.nome_vendedor === sellerName)?.url_foto;
   const firstName = sellerName.split(" ")[0];
 
   // ── Filter data for this seller ───────────────────────────────────────────

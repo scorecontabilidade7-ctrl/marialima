@@ -4,8 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Shield, Plus, Trash2 } from "lucide-react";
+import { Shield, Plus, Trash2, ArrowLeft } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { ALL_STORES, STORE_LABELS, type Store as StoreType } from "@/hooks/useUserAccess";
 
 type Role = "admin" | "manager" | "seller";
@@ -23,6 +24,7 @@ const ROLE_COLORS: Record<Role, string> = {
 };
 
 export default function PermissionsManagement() {
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const [addingRole, setAddingRole] = useState<Record<string, Role>>({});
 
@@ -110,10 +112,15 @@ export default function PermissionsManagement() {
   const getUserStores  = (uid: string) => userStores?.filter((s) => s.user_id === uid) ?? [];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold">Permissões</h2>
-        <p className="text-sm text-muted-foreground mt-1">Gerencie papéis e acesso às lojas por usuário</p>
+    <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-8">
+      <div className="flex flex-col md:flex-row md:items-center gap-4">
+        <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} className="shrink-0">
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+        <div>
+          <h2 className="text-xl font-bold">Permissões</h2>
+          <p className="text-sm text-muted-foreground mt-1">Gerencie papéis e acesso às lojas por usuário</p>
+        </div>
       </div>
 
       <Card className="border border-border/60">

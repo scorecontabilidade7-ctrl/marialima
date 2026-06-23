@@ -1,17 +1,7 @@
 import { BarChart3, Target, Settings, LogIn, LogOut, Sun, Moon } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
-
-interface SidebarProps {
-  activeView: string;
-  onViewChange: (view: string) => void;
-}
-
-const navItems = [
-  { id: "cockpit", label: "Cockpit", icon: BarChart3 },
-  { id: "metas", label: "Metas", icon: Target },
-];
 
 function TooltipItem({
   icon: Icon,
@@ -53,31 +43,41 @@ function TooltipItem({
   );
 }
 
-export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
+export default function Sidebar() {
   const { session, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { theme, toggle } = useTheme();
 
+  const isDashboard = location.pathname === "/" || location.pathname === "/itapipoca";
+  const view = searchParams.get("view") || "cockpit";
+  const targetPath = isDashboard ? location.pathname : "/";
+
   return (
-    <aside className="w-14 h-screen sticky top-0 bg-sidebar flex flex-col border-r border-sidebar-border shrink-0">
+    <aside className="w-14 h-screen sticky top-0 bg-sidebar flex flex-col border-r border-sidebar-border shrink-0 z-50">
       <div className="h-14 flex items-center justify-center border-b border-sidebar-border shrink-0">
         <img src="/logo.png" alt="Maria Lima" className="w-9 h-9 object-contain" />
       </div>
 
       <nav className="flex-1 flex flex-col items-center py-3 gap-0.5">
-        {navItems.map((item) => (
-          <TooltipItem
-            key={item.id}
-            icon={item.icon}
-            label={item.label}
-            isActive={item.id === activeView}
-            onClick={() => onViewChange(item.id)}
-          />
-        ))}
+        <TooltipItem
+          icon={BarChart3}
+          label="Cockpit"
+          isActive={isDashboard && view === "cockpit"}
+          onClick={() => navigate(`${targetPath}?view=cockpit`)}
+        />
+        <TooltipItem
+          icon={Target}
+          label="Metas"
+          isActive={isDashboard && view === "metas"}
+          onClick={() => navigate(`${targetPath}?view=metas`)}
+        />
         {session && (
           <TooltipItem
             icon={Settings}
             label="Admin"
+            isActive={location.pathname.startsWith("/admin")}
             onClick={() => navigate("/admin")}
           />
         )}
@@ -93,7 +93,7 @@ export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
           <TooltipItem
             icon={LogOut}
             label="Sair"
-            onClick={async () => { await signOut(); }}
+            onClick={async () => { await signOut(); navigate("/login"); }}
           />
         ) : (
           <TooltipItem

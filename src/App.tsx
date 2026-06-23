@@ -7,7 +7,7 @@ import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Login from "./pages/Login.tsx";
 import Welcome from "./pages/Welcome.tsx";
-import AdminLayout from "./pages/admin/AdminLayout.tsx";
+import GlobalLayout from "./pages/GlobalLayout.tsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 import GoalsManagement from "./pages/admin/GoalsManagement.tsx";
 import UsersManagement from "./pages/admin/UsersManagement.tsx";
@@ -24,20 +24,20 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index store="sobral" />} />
-          <Route path="/itapipoca" element={<Index store="itapipoca" />} />
-          <Route path="/welcome" element={<Welcome />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<AdminDashboard />} />
-            <Route path="metas" element={<GoalsManagement />} />
-            <Route path="usuarios" element={<UsersManagement />} />
-            <Route path="vendedores" element={<VendedoresManagement />} />
-            <Route path="permissoes" element={<PermissionsManagement />} />
+          <Route path="/welcome" element={<Welcome />} />
+          <Route element={<GlobalLayout />}>
+            <Route path="/" element={<Index store="sobral" />} />
+            <Route path="/itapipoca" element={<Index store="itapipoca" />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/metas" element={<GoalsManagement />} />
+            <Route path="/admin/usuarios" element={<UsersManagement />} />
+            <Route path="/admin/vendedores" element={<VendedoresManagement />} />
+            <Route path="/admin/permissoes" element={<PermissionsManagement />} />
+            <Route path="/vendedor/:name" element={<SellerProfile />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
           </Route>
-          <Route path="/vendedor/:name" element={<SellerProfile />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

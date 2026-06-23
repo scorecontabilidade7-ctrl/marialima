@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Shield } from "lucide-react";
+import { Plus, Shield, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface Profile {
   id: string;
@@ -36,6 +37,7 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 export default function UsersManagement() {
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const [openNew, setOpenNew] = useState(false);
   const [newUser, setNewUser] = useState({ username: "", email: "", password: "", full_name: "", role: "seller" });
@@ -91,11 +93,16 @@ export default function UsersManagement() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold">Gestão de Usuários</h2>
-          <p className="text-sm text-muted-foreground mt-1">Gerencie usuários e suas permissões</p>
+    <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} className="shrink-0">
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h2 className="text-xl font-bold">Gestão de Usuários</h2>
+            <p className="text-sm text-muted-foreground mt-1">Gerencie usuários e suas permissões</p>
+          </div>
         </div>
         <Dialog open={openNew} onOpenChange={setOpenNew}>
           <DialogTrigger asChild>

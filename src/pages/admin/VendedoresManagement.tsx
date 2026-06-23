@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Pencil, UploadCloud, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Plus, Pencil, UploadCloud, Loader2, ArrowLeft } from "lucide-react";
 function getInitials(name: string) {
   const parts = name.trim().split(" ");
   if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
@@ -15,6 +16,7 @@ function getInitials(name: string) {
 }
 
 export default function VendedoresManagement() {
+  const navigate = useNavigate();
   const { data: configs, isLoading } = useVendedoresConfig();
   const { data: distinctSellers, isLoading: isLoadingSellers } = useDistinctVendedores();
   const { mutateAsync: upsertConfig } = useUpsertVendedorConfig();
@@ -87,14 +89,20 @@ export default function VendedoresManagement() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-8">
+      <div className="flex items-center gap-4 mb-4">
+        <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} className="shrink-0">
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Gestão de Vendedores</h2>
           <p className="text-sm text-muted-foreground mt-1">
             Configure as fotos e perfil dos vendedores para o Dashboard.
           </p>
         </div>
+      </div>
+      
+      <div className="flex justify-end">
         
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>

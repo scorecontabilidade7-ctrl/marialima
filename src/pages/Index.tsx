@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useSalesData } from "@/hooks/useSalesData";
 import { useAuth } from "@/hooks/useAuth";
@@ -66,7 +66,8 @@ export default function Index({ store = "sobral" }: IndexProps) {
   const { session, loading: authLoading } = useAuth();
   const { hasStoreAccess, loading: accessLoading } = useUserAccess();
   const navigate = useNavigate();
-  const [activeView, setActiveView] = useState("cockpit");
+  const [searchParams] = useSearchParams();
+  const activeView = searchParams.get("view") || "cockpit";
   const [selectedMeta, setSelectedMeta] = useState<MetaKey>("minima");
 
   const goToPrevMonth = () => {
@@ -126,18 +127,15 @@ export default function Index({ store = "sobral" }: IndexProps) {
   }
 
   return (
-    <div className="min-h-screen flex">
-      <Sidebar activeView={activeView} onViewChange={setActiveView} />
-
-      <div className="flex-1 min-w-0 flex flex-col">
-        {/* Header */}
-        <header className="border-b border-border/60 px-6 py-3 flex items-center justify-between shrink-0 bg-card">
-          <div>
-            <div className="flex items-baseline gap-2">
-              <h1 className="text-base font-bold text-foreground tracking-tight">Dashboard de Vendas</h1>
-              <span className="text-base font-light text-muted-foreground/50">|</span>
-              <span className="text-sm font-semibold text-primary">Maria Lima</span>
-            </div>
+    <div className="flex-1 min-w-0 flex flex-col h-full">
+      {/* Header */}
+      <header className="border-b border-border/60 px-6 py-3 flex items-center justify-between shrink-0 bg-card">
+        <div>
+          <div className="flex items-baseline gap-2">
+            <h1 className="text-base font-bold text-foreground tracking-tight">Dashboard de Vendas</h1>
+            <span className="text-base font-light text-muted-foreground/50">|</span>
+            <span className="text-sm font-semibold text-primary">Maria Lima</span>
+          </div>
             <p className="text-xs text-muted-foreground mt-0.5">
               Análise de vendedores, departamentos e comissões em tempo real.
             </p>
@@ -269,7 +267,6 @@ export default function Index({ store = "sobral" }: IndexProps) {
             </>
           )}
         </main>
-      </div>
     </div>
   );
 }

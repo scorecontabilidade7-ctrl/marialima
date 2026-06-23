@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Pencil } from "lucide-react";
+import { Plus, Pencil, ArrowLeft } from "lucide-react";
 import { BR_TIME_ZONE, getDatePartsInTimeZone } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 
 function formatBRL(value: number) {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -153,6 +154,7 @@ const STORES = [
 ] as const;
 
 export default function GoalsManagement() {
+  const navigate = useNavigate();
   const [activeStore, setActiveStore] = useState<"sobral" | "itapipoca">("sobral");
   const { data: goals, isLoading } = useMonthlyGoals(activeStore);
   const upsert = useUpsertGoal();
@@ -259,11 +261,16 @@ export default function GoalsManagement() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold">Gestão de Metas</h2>
-          <p className="text-sm text-muted-foreground mt-1">Cadastre metas mensais da loja</p>
+    <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} className="shrink-0">
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h2 className="text-xl font-bold">Gestão de Metas</h2>
+            <p className="text-sm text-muted-foreground mt-1">Cadastre metas mensais da loja</p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center border border-border rounded-lg overflow-hidden text-xs font-medium">
