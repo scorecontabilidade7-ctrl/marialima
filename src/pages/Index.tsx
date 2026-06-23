@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, HelpCircle } from "lucide-react";
 import { useSalesData, useDataExtracao } from "@/hooks/useSalesData";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserAccess } from "@/hooks/useUserAccess";
@@ -11,7 +11,17 @@ import SalesTimeline from "@/components/dashboard/SalesTimeline";
 import DepartmentChart from "@/components/dashboard/DepartmentChart";
 import Sidebar from "@/components/dashboard/Sidebar";
 import MetasTracking, { META_OPTIONS, type MetaKey } from "@/components/dashboard/MetasTracking";
+import { useCurrentMonthGoals } from "@/hooks/useMonthlyGoals";
+import { useDynamicCommissions } from "@/hooks/useDynamicCommissions";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { BR_TIME_ZONE, formatTimeHMInTimeZone, getDatePartsInTimeZone } from "@/lib/utils";
 
 const STORE_LABELS: Record<string, string> = {
@@ -47,6 +57,11 @@ export default function Index({ store = "sobral" }: IndexProps) {
     };
   });
 
+  const initialCommissionStr = sessionStorage.getItem("dashboardCommissionMode");
+  const [commissionMode, setCommissionMode] = useState<"fixa" | "dinamica">(
+    (initialCommissionStr as "fixa" | "dinamica") || "dinamica"
+  );
+
   useEffect(() => {
     sessionStorage.setItem("dashboardSelectedMonth", JSON.stringify(selectedMonth));
   }, [selectedMonth]);
@@ -54,6 +69,10 @@ export default function Index({ store = "sobral" }: IndexProps) {
   useEffect(() => {
     sessionStorage.setItem("dashboardFilters", JSON.stringify(filters));
   }, [filters]);
+
+  useEffect(() => {
+    sessionStorage.setItem("dashboardCommissionMode", commissionMode);
+  }, [commissionMode]);
 
   const { data, isLoading, error, dataUpdatedAt } = useSalesData(store, {
     year: selectedMonth.year,
@@ -72,6 +91,22 @@ export default function Index({ store = "sobral" }: IndexProps) {
   const [searchParams] = useSearchParams();
   const activeView = searchParams.get("view") || "cockpit";
   const [selectedMeta, setSelectedMeta] = useState<MetaKey>("minima");
+
+  const targetYearMonth = `${currentYear}-${String(currentMonth).padStart(2, "0")}`;
+  const { data: goalData } = useCurrentMonthGoals(store, targetYearMonth);
+
+  const dynamicRanking = useDynamicCommissions(
+    data?.ranking ?? [],
+    goalData,
+    commissionMode === "dinamica"
+  );
+
+  const kpis = useMemo(() => {
+    if (!data?.kpis) return data?.kpis;
+    if (commissionMode !== "dinamica") return data.kpis;
+    const total_comissoes = dynamicRanking.reduce((s, r) => s + r.comissao, 0);
+    return { ...data.kpis, total_comissoes };
+  }, [data?.kpis, commissionMode, dynamicRanking]);
 
   const goToPrevMonth = () => {
     setSelectedMonth((prev) => {
@@ -253,6 +288,76 @@ export default function Index({ store = "sobral" }: IndexProps) {
                 </div>
               </div>
             )}
+            {/* Toggle de Comissões */}
+            <div className="space-y-1.5 ml-auto">
+              <div className="flex items-center gap-1.5">
+                <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Tipo de Comissão</label>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <button className="text-muted-foreground hover:text-primary transition-colors" title="Como funciona?">
+                      <HelpCircle className="w-3.5 h-3.5" />
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Tipos de Comissão</DialogTitle>
+                      <DialogDescription>
+                        Entenda como os valores de comissão são exibidos no painel.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-2 text-sm">
+                      <div>
+                        <h4 className="font-bold text-foreground flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-primary" />
+                          Comissão Dinâmica
+                        </h4>
+                        <p className="text-muted-foreground mt-1.5">
+                          Calculada em tempo real com base na Meta da Loja dividida pelo número de vendedores ativos no mês. A porcentagem varia de acordo com a faixa alcançada:
+                        </p>
+                        <ul className="mt-2.5 space-y-1.5 text-muted-foreground bg-muted/50 p-3 rounded-lg border border-border/50">
+                          <li className="flex justify-between"><span className="font-medium text-foreground">Atingiu Master</span> <span>2,0%</span></li>
+                          <li className="flex justify-between"><span className="font-medium text-foreground">Atingiu Top 2</span> <span>1,5%</span></li>
+                          <li className="flex justify-between"><span className="font-medium text-foreground">Atingiu Top 1</span> <span>1,3%</span></li>
+                          <li className="flex justify-between"><span className="font-medium text-foreground">Atingiu Mínima</span> <span>1,0%</span></li>
+                          <li className="flex justify-between text-muted-foreground/70"><span className="font-medium">Abaixo da Mínima</span> <span>0%</span></li>
+                        </ul>
+                      </div>
+                      <div className="pt-4 border-t border-border/50">
+                        <h4 className="font-bold text-foreground flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-muted-foreground" />
+                          Comissão Fixa
+                        </h4>
+                        <p className="text-muted-foreground mt-1.5">
+                          Exibe o valor exato importado da sua base de dados original, sem aplicar a regra de metas do painel.
+                        </p>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              <div className="flex items-center bg-secondary/50 p-1 rounded-lg border border-border/40 h-9">
+                <button
+                  onClick={() => setCommissionMode("dinamica")}
+                  className={`px-3 h-full text-xs font-bold rounded-md transition-all duration-200 ${
+                    commissionMode === "dinamica"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  }`}
+                >
+                  Dinâmica
+                </button>
+                <button
+                  onClick={() => setCommissionMode("fixa")}
+                  className={`px-3 h-full text-xs font-bold rounded-md transition-all duration-200 ${
+                    commissionMode === "fixa"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  }`}
+                >
+                  Fixa
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -271,13 +376,13 @@ export default function Index({ store = "sobral" }: IndexProps) {
               </div>
             </div>
           ) : activeView === "metas" ? (
-            <MetasTracking ranking={data?.ranking ?? []} timeline={data?.timeline ?? []} selectedMeta={selectedMeta} onMetaChange={setSelectedMeta} store={store} selectedMonth={selectedMonth} />
+            <MetasTracking ranking={dynamicRanking} timeline={data?.timeline ?? []} selectedMeta={selectedMeta} onMetaChange={setSelectedMeta} store={store} selectedMonth={selectedMonth} />
           ) : (
             <>
-              <KPICards kpis={data?.kpis} timeline={data?.timeline ?? []} />
+              <KPICards kpis={kpis} timeline={data?.timeline ?? []} />
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                <SalesRanking ranking={data?.ranking ?? []} selectedMonth={selectedMonth} store={store} />
+                <SalesRanking ranking={dynamicRanking} selectedMonth={selectedMonth} store={store} />
                 <DepartmentChart
                   departamentos={data?.departamentos ?? []}
                   totalVendas={data?.kpis?.total_vendas ?? 0}

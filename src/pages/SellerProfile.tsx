@@ -5,6 +5,7 @@ import { useCurrentMonthGoals } from "@/hooks/useMonthlyGoals";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, TrendingUp, ShoppingBag, Users, Award, DollarSign, RefreshCw } from "lucide-react";
 import { BR_TIME_ZONE, getDatePartsInTimeZone } from "@/lib/utils";
+import { calculateSingleDynamicCommission } from "@/hooks/useDynamicCommissions";
 import {
   AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
@@ -66,6 +67,9 @@ export default function SellerProfile() {
 
   const { data: goalData } = useCurrentMonthGoals(store, targetYearMonth);
   
+  const initialCommissionStr = sessionStorage.getItem("dashboardCommissionMode");
+  const commissionMode = (initialCommissionStr as "fixa" | "dinamica") || "dinamica";
+
   const dashboardFilters = {
     year: currentYear,
     month: currentMonth,
@@ -86,7 +90,7 @@ export default function SellerProfile() {
 
   const totalMes = monthVendas.reduce((s, v) => s + v.valor_total, 0);
   const totalGeral = myVendas.reduce((s, v) => s + v.valor_total, 0);
-  const totalComissao = myVendas.reduce((s, v) => s + v.comissao_vendedor, 0);
+  
   const ticketMedio = myVendas.length > 0 ? totalGeral / myVendas.length : 0;
   const numPedidos = myVendas.length;
 
@@ -95,6 +99,11 @@ export default function SellerProfile() {
     if (!dashboardData?.ranking) return 0;
     return dashboardData.ranking.findIndex((r) => r.vendedor === sellerName) + 1;
   }, [dashboardData, sellerName]);
+
+  const sellerCount = Math.max(dashboardData?.ranking?.length || 1, 1);
+  const comissaoFixaMes = monthVendas.reduce((s, v) => s + v.comissao_vendedor, 0);
+  const comissaoDinamicaMes = useMemo(() => calculateSingleDynamicCommission(totalMes, sellerCount, goalData), [totalMes, sellerCount, goalData]);
+  const displayComissao = commissionMode === "dinamica" ? comissaoDinamicaMes : comissaoFixaMes;
 
   // ── Monthly history (last 12 months) ─────────────────────────────────────
   const monthlyHistory = useMemo(() => {
@@ -154,7 +163,6 @@ export default function SellerProfile() {
   }, [myVendas]);
 
   // ── Goal performance ──────────────────────────────────────────────────────
-  const sellerCount = Math.max(dashboardData?.ranking?.length || 1, 1);
   const metas = goalData
     ? {
         minima: goalData.meta_minima / sellerCount,
@@ -258,7 +266,7 @@ export default function SellerProfile() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
             { label: "Total Histórico",  value: fmtShort(totalGeral),   icon: DollarSign,  sub: `${numPedidos} pedidos` },
-            { label: "Comissão Total",   value: fmtShort(totalComissao), icon: Award,       sub: "acumulada" },
+            { label: "Comissão no Mês",   value: fmtShort(displayComissao), icon: Award,       sub: commissionMode === "dinamica" ? "dinâmica" : "fixa" },
             { label: "Ticket Médio",     value: fmtShort(ticketMedio),  icon: TrendingUp,  sub: "por pedido" },
             { label: "Pedidos no Mês",   value: String(monthVendas.length), icon: ShoppingBag, sub: `em ${selectedMonthLabel.toLowerCase()}` },
           ].map((kpi) => (
