@@ -72,8 +72,6 @@ export default function SalesRanking({ ranking, selectedMonth, store }: SalesRan
                 Lista
               </button>
             </div>
-
-            </div>
           </div>
         </div>
       </CardHeader>

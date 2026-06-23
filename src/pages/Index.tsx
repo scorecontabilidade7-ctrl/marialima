@@ -173,8 +173,8 @@ export default function Index({ store = "sobral" }: IndexProps) {
                   const hour = parseInt(new Date().toLocaleTimeString("pt-BR", { timeZone: BR_TIME_ZONE, hour: "2-digit", hour12: false }));
                   const name = session?.user?.user_metadata?.full_name || session?.user?.email?.split("@")[0] || "";
                   const firstName = name.split(" ")[0];
-                  if (hour >= 5 && hour < 12) return `Bom dia, ${firstName} ☀️`;
-                  if (hour >= 12 && hour < 18) return `Boa tarde, ${firstName} ☕`;
+                  if (hour >= 5 && hour < 12) return `Bom dia, ${firstName} ☁️`;
+                  if (hour >= 12 && hour < 18) return `Boa tarde, ${firstName} ☀️`;
                   return `Boa noite, ${firstName} 🌙`;
                 })()}
               </span>
