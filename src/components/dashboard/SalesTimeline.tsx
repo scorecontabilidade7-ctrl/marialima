@@ -37,7 +37,7 @@ export default function SalesTimeline({ timeline }: SalesTimelineProps) {
               axisLine={false}
               tickLine={false}
               tickFormatter={(v) => {
-                const d = new Date(v + "T00:00:00Z");
+                const d = new Date(v + "T12:00:00Z");
                 return d.toLocaleDateString("pt-BR", { timeZone: BR_TIME_ZONE, day: "2-digit", month: "short" });
               }}
               interval="preserveStartEnd"
@@ -46,7 +46,7 @@ export default function SalesTimeline({ timeline }: SalesTimelineProps) {
             <Tooltip
               formatter={(value: number) => [new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value), "Vendas"]}
               labelFormatter={(label) => {
-                const d = new Date(label + "T00:00:00Z");
+                const d = new Date(label + "T12:00:00Z");
                 return d.toLocaleDateString("pt-BR", { timeZone: BR_TIME_ZONE, day: "2-digit", month: "long", year: "numeric" });
               }}
               contentStyle={{ backgroundColor: "#fff", border: "1px solid hsl(220,13%,88%)", borderRadius: "6px", color: "hsl(220,20%,14%)" }}

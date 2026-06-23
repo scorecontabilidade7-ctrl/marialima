@@ -1,6 +1,7 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import type { FilterOptions } from "@/hooks/useSalesData";
+import { BR_TIME_ZONE, getDatePartsInTimeZone } from "@/lib/utils";
 
 interface DashboardFiltersProps {
   filterOptions?: FilterOptions;
@@ -10,12 +11,18 @@ interface DashboardFiltersProps {
     dataInicio: string;
     dataFim: string;
   };
+  selectedMonth?: { year: number; month: number };
   onFilterChange: (key: string, value: string) => void;
 }
 
-export default function DashboardFilters({ filterOptions, filters, onFilterChange }: DashboardFiltersProps) {
+export default function DashboardFilters({ filterOptions, filters, selectedMonth, onFilterChange }: DashboardFiltersProps) {
   const uniqueVendedores = filterOptions?.vendedores || [];
   const uniqueDepartamentos = filterOptions?.departamentos || [];
+
+  const now = new Date();
+  const { year, month } = getDatePartsInTimeZone(now, BR_TIME_ZONE);
+  const day = parseInt(now.toLocaleDateString("pt-BR", { timeZone: BR_TIME_ZONE, day: "numeric" }), 10);
+  const todayStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
   return (
     <div className="flex flex-wrap gap-3 items-end">
@@ -24,6 +31,7 @@ export default function DashboardFilters({ filterOptions, filters, onFilterChang
         <Input
           type="date"
           value={filters.dataInicio}
+          max={filters.dataFim || todayStr}
           onChange={(e) => onFilterChange("dataInicio", e.target.value)}
           className="w-40 h-9 bg-secondary border-border/50 text-sm"
         />
@@ -33,6 +41,8 @@ export default function DashboardFilters({ filterOptions, filters, onFilterChang
         <Input
           type="date"
           value={filters.dataFim}
+          min={filters.dataInicio || undefined}
+          max={todayStr}
           onChange={(e) => onFilterChange("dataFim", e.target.value)}
           className="w-40 h-9 bg-secondary border-border/50 text-sm"
         />

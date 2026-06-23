@@ -17,11 +17,14 @@ BEGIN
         SELECT v.* 
         FROM gigatech_vendedores v
         WHERE v.cliente_id = p_cliente_id
-          AND EXTRACT(YEAR FROM v.data_venda::date) = p_year
-          AND EXTRACT(MONTH FROM v.data_venda::date) = p_month
+          AND (
+              (p_data_inicio IS NOT NULL OR p_data_fim IS NOT NULL) 
+              OR 
+              (EXTRACT(YEAR FROM timezone('UTC', v.data_venda)::date) = p_year AND EXTRACT(MONTH FROM timezone('UTC', v.data_venda)::date) = p_month)
+          )
           AND (p_vendedor IS NULL OR p_vendedor = 'all' OR v.nome_vendedor = p_vendedor)
-          AND (p_data_inicio IS NULL OR v.data_venda::date >= p_data_inicio)
-          AND (p_data_fim IS NULL OR v.data_venda::date <= p_data_fim)
+          AND (p_data_inicio IS NULL OR timezone('UTC', v.data_venda)::date >= p_data_inicio)
+          AND (p_data_fim IS NULL OR timezone('UTC', v.data_venda)::date <= p_data_fim)
           AND (p_departamento IS NULL OR p_departamento = 'all' OR EXISTS (
               SELECT 1 FROM gigatech_vendas d
               WHERE d.cliente_id = v.cliente_id 
@@ -59,11 +62,11 @@ BEGIN
     ),
     timeline AS (
         SELECT 
-            data_venda::date::text AS date,
+            timezone('UTC', data_venda)::date::text AS date,
             SUM(valor_total::numeric) AS total,
             COUNT(DISTINCT n_cupom) AS count
         FROM base_vendas
-        GROUP BY data_venda::date
+        GROUP BY timezone('UTC', data_venda)::date
         ORDER BY date ASC
     ),
     departamentos AS (
@@ -79,8 +82,13 @@ BEGIN
         SELECT DISTINCT nome_vendedor AS vendedor
         FROM gigatech_vendedores
         WHERE cliente_id = p_cliente_id 
-          AND EXTRACT(YEAR FROM data_venda::date) = p_year
-          AND EXTRACT(MONTH FROM data_venda::date) = p_month
+          AND (
+              (p_data_inicio IS NOT NULL OR p_data_fim IS NOT NULL) 
+              OR 
+              (EXTRACT(YEAR FROM timezone('UTC', data_venda)::date) = p_year AND EXTRACT(MONTH FROM timezone('UTC', data_venda)::date) = p_month)
+          )
+          AND (p_data_inicio IS NULL OR timezone('UTC', data_venda)::date >= p_data_inicio)
+          AND (p_data_fim IS NULL OR timezone('UTC', data_venda)::date <= p_data_fim)
           AND nome_vendedor IS NOT NULL AND nome_vendedor != ''
         ORDER BY vendedor
     ),
@@ -89,8 +97,13 @@ BEGIN
         FROM gigatech_vendas d
         JOIN gigatech_vendedores v ON v.n_cupom = d.n_cupom AND v.cliente_id = d.cliente_id
         WHERE d.cliente_id = p_cliente_id 
-          AND EXTRACT(YEAR FROM v.data_venda::date) = p_year
-          AND EXTRACT(MONTH FROM v.data_venda::date) = p_month
+          AND (
+              (p_data_inicio IS NOT NULL OR p_data_fim IS NOT NULL) 
+              OR 
+              (EXTRACT(YEAR FROM timezone('UTC', v.data_venda)::date) = p_year AND EXTRACT(MONTH FROM timezone('UTC', v.data_venda)::date) = p_month)
+          )
+          AND (p_data_inicio IS NULL OR timezone('UTC', v.data_venda)::date >= p_data_inicio)
+          AND (p_data_fim IS NULL OR timezone('UTC', v.data_venda)::date <= p_data_fim)
           AND d.departamento IS NOT NULL AND d.departamento != ''
         ORDER BY departamento
     )

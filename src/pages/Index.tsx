@@ -227,6 +227,7 @@ export default function Index({ store = "sobral" }: IndexProps) {
             <DashboardFilters
               filterOptions={data?.filter_options}
               filters={filters}
+              selectedMonth={selectedMonth}
               onFilterChange={handleFilterChange}
             />
             {activeView === "metas" && (
