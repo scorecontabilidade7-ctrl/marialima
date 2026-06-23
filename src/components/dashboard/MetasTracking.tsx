@@ -23,6 +23,7 @@ interface MetasTrackingProps {
   selectedMeta: MetaKey;
   onMetaChange: (meta: MetaKey) => void;
   store?: string;
+  selectedMonth?: { year: number; month: number };
 }
 
 // Commission values per level
@@ -118,14 +119,28 @@ function buildDayTargetsFromWeekdayPercents(weeks: WeekSpec[], metaMensal: numbe
   return targets;
 }
 
-export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaChange, store = "sobral" }: MetasTrackingProps) {
+export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaChange, store = "sobral", selectedMonth }: MetasTrackingProps) {
   const navigate = useNavigate();
   const now = new Date();
-  const { year: currentYear, month: currentMonthNum, day: todayDay } = getDatePartsInTimeZone(now, BR_TIME_ZONE);
-  const currentMonth = currentMonthNum - 1;
-  const todayUtc = new Date(Date.UTC(currentYear, currentMonth, todayDay, 23, 59, 59, 999));
+  const { year: realYear, month: realMonthNum, day: todayDay } = getDatePartsInTimeZone(now, BR_TIME_ZONE);
+  
+  const isCurrentMonth = !selectedMonth || (selectedMonth.year === realYear && selectedMonth.month === realMonthNum);
+  const displayYear = selectedMonth ? selectedMonth.year : realYear;
+  const displayMonthNum = selectedMonth ? selectedMonth.month : realMonthNum;
+  const displayMonth = displayMonthNum - 1;
+  
+  const todayUtc = new Date(Date.UTC(realYear, realMonthNum - 1, todayDay, 23, 59, 59, 999));
 
-  const { data: goalData } = useCurrentMonthGoals(store);
+  const queryParams = new URLSearchParams();
+  if (selectedMonth) {
+    queryParams.set("year", String(selectedMonth.year));
+    queryParams.set("month", String(selectedMonth.month));
+  }
+  if (store) queryParams.set("store", store);
+  const queryStr = queryParams.toString() ? `?${queryParams.toString()}` : "";
+
+  const targetYearMonth = `${displayYear}-${String(displayMonthNum).padStart(2, "0")}`;
+  const { data: goalData } = useCurrentMonthGoals(store, targetYearMonth);
 
   const METAS_LOJA = useMemo(() => ({
     minima: goalData?.meta_minima ?? 90000,
@@ -148,7 +163,7 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
     master: METAS_LOJA.master / sellerCount,
   }), [METAS_LOJA, sellerCount]);
 
-  const weeks = useMemo(() => getWeeksOfMonth(currentYear, currentMonth), [currentYear, currentMonth]);
+  const weeks = useMemo(() => getWeeksOfMonth(displayYear, displayMonth), [displayYear, displayMonth]);
 
   const salesByDate = useMemo(() => {
     const map: Record<string, number> = {};
@@ -180,13 +195,14 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
   );
 
   const diasUteisCorridos = useMemo(() => {
+    if (!isCurrentMonth) return DIAS_UTEIS_MES;
     let count = 0;
     for (let d = 1; d <= todayDay; d++) {
-      const date = new Date(Date.UTC(currentYear, currentMonth, d));
+      const date = new Date(Date.UTC(displayYear, displayMonth, d));
       if (date.getUTCDay() !== 0) count++;
     }
     return count;
-  }, [todayDay, currentYear, currentMonth]);
+  }, [isCurrentMonth, todayDay, displayYear, displayMonth, DIAS_UTEIS_MES]);
 
   const pctMinima = Math.min((totalRealized / METAS_LOJA[selectedMeta]) * 100, 100);
   const projection = diasUteisCorridos > 0 ? (totalRealized / diasUteisCorridos) * DIAS_UTEIS_MES : 0;
@@ -256,7 +272,7 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
                     <tr
                       key={seller.name}
                       className="border-b border-border/30 hover:bg-muted/30 transition-colors cursor-pointer"
-                      onClick={() => navigate(`/vendedor/${encodeURIComponent(seller.name)}`)}
+                      onClick={() => navigate(`/vendedor/${encodeURIComponent(seller.name)}${queryStr}`)}
                     >
                       <td className="px-4 py-2.5">
                         <div className="flex items-center gap-2.5">
@@ -317,7 +333,7 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
                   <tr
                     key={seller.name}
                     className="border-b border-border/30 hover:bg-muted/30 transition-colors cursor-pointer"
-                    onClick={() => navigate(`/vendedor/${encodeURIComponent(seller.name)}`)}
+                    onClick={() => navigate(`/vendedor/${encodeURIComponent(seller.name)}${queryStr}`)}
                   >
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2.5">

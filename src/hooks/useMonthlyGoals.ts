@@ -45,10 +45,11 @@ export function useMonthlyGoals(store = "sobral") {
   });
 }
 
-export function useCurrentMonthGoals(store = "sobral") {
+export function useCurrentMonthGoals(store = "sobral", targetYearMonth?: string) {
   const now = new Date();
   const { year, month } = getDatePartsInTimeZone(now, BR_TIME_ZONE);
-  const yearMonth = `${year}-${String(month).padStart(2, "0")}`;
+  const currentYearMonth = `${year}-${String(month).padStart(2, "0")}`;
+  const yearMonth = targetYearMonth || currentYearMonth;
 
   return useQuery({
     queryKey: ["monthly-goals", store, yearMonth],

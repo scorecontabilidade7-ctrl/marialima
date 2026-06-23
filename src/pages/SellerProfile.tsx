@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { useRawSalesData } from "@/hooks/useSalesData";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useRawSalesData, useSalesData } from "@/hooks/useSalesData";
 import { useCurrentMonthGoals } from "@/hooks/useMonthlyGoals";
 import { getSellerPhoto } from "@/lib/sellerPhotos";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,10 +27,11 @@ function fmtShort(v: number) {
 export default function SellerProfile() {
   const { name } = useParams<{ name: string }>();
   const navigate = useNavigate();
-  const { data, isLoading } = useRawSalesData();
-  const { data: goalData } = useCurrentMonthGoals();
-
+  const [searchParams] = useSearchParams();
+  const store = (searchParams.get("store") as "sobral" | "itapipoca") || "sobral";
   const sellerName = decodeURIComponent(name || "");
+  const { data, isLoading } = useRawSalesData(store, sellerName);
+
   const photo = getSellerPhoto(sellerName);
   const firstName = sellerName.split(" ")[0];
 
@@ -52,7 +53,24 @@ export default function SellerProfile() {
 
   // ── Current month ─────────────────────────────────────────────────────────
   const now = new Date();
-  const { year: currentYear, month: currentMonth } = getDatePartsInTimeZone(now, BR_TIME_ZONE);
+  const { year: realYear, month: realMonth } = getDatePartsInTimeZone(now, BR_TIME_ZONE);
+  
+  const yearParam = searchParams.get("year");
+  const monthParam = searchParams.get("month");
+  const currentYear = yearParam ? parseInt(yearParam, 10) : realYear;
+  const currentMonth = monthParam ? parseInt(monthParam, 10) : realMonth;
+  const targetYearMonth = `${currentYear}-${String(currentMonth).padStart(2, "0")}`;
+  const selectedMonthLabel = `${MONTH_NAMES[currentMonth - 1]} de ${currentYear}`;
+
+  const { data: goalData } = useCurrentMonthGoals(store, targetYearMonth);
+  
+  const dashboardFilters = {
+    year: currentYear,
+    month: currentMonth,
+    vendedor: "all",
+    departamento: "all",
+  };
+  const { data: dashboardData } = useSalesData(store, dashboardFilters);
 
   const monthVendas = useMemo(
     () =>
@@ -71,15 +89,10 @@ export default function SellerProfile() {
   const numPedidos = myVendas.length;
 
   // ── All sellers rank ──────────────────────────────────────────────────────
-  const allSellers = useMemo(() => {
-    const map: Record<string, number> = {};
-    (data?.vendedores || []).forEach((v) => {
-      if (v.vendedor) map[v.vendedor] = (map[v.vendedor] || 0) + v.valor_total;
-    });
-    return Object.entries(map).sort((a, b) => b[1] - a[1]);
-  }, [data]);
-
-  const rank = allSellers.findIndex(([n]) => n === sellerName) + 1;
+  const rank = useMemo(() => {
+    if (!dashboardData?.ranking) return 0;
+    return dashboardData.ranking.findIndex((r) => r.vendedor === sellerName) + 1;
+  }, [dashboardData, sellerName]);
 
   // ── Monthly history (last 12 months) ─────────────────────────────────────
   const monthlyHistory = useMemo(() => {
@@ -139,7 +152,7 @@ export default function SellerProfile() {
   }, [myVendas]);
 
   // ── Goal performance ──────────────────────────────────────────────────────
-  const sellerCount = Math.max(allSellers.length, 1);
+  const sellerCount = Math.max(dashboardData?.ranking?.length || 1, 1);
   const metas = goalData
     ? {
         minima: goalData.meta_minima / sellerCount,
@@ -221,9 +234,12 @@ export default function SellerProfile() {
 
             {/* Month highlight */}
             <div className="text-center sm:text-right shrink-0">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">Vendas este mês</p>
-              <p className="text-3xl font-bold" style={{ color: TEAL }}>{fmtShort(totalMes)}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{monthVendas.length} pedido{monthVendas.length !== 1 ? "s" : ""}</p>
+              <div className="inline-flex items-center gap-1.5 bg-muted/50 text-muted-foreground px-2.5 py-1 rounded-md mb-2">
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: TEAL }} />
+                <span className="text-[11px] font-semibold uppercase tracking-wider">{selectedMonthLabel}</span>
+              </div>
+              <p className="text-3xl font-bold leading-none" style={{ color: TEAL }}>{fmtShort(totalMes)}</p>
+              <p className="text-xs text-muted-foreground mt-1.5">{monthVendas.length} pedido{monthVendas.length !== 1 ? "s" : ""}</p>
             </div>
           </CardContent>
         </Card>
@@ -234,7 +250,7 @@ export default function SellerProfile() {
             { label: "Total Histórico",  value: fmtShort(totalGeral),   icon: DollarSign,  sub: `${numPedidos} pedidos` },
             { label: "Comissão Total",   value: fmtShort(totalComissao), icon: Award,       sub: "acumulada" },
             { label: "Ticket Médio",     value: fmtShort(ticketMedio),  icon: TrendingUp,  sub: "por pedido" },
-            { label: "Pedidos no Mês",   value: String(monthVendas.length), icon: ShoppingBag, sub: "este mês" },
+            { label: "Pedidos no Mês",   value: String(monthVendas.length), icon: ShoppingBag, sub: `em ${selectedMonthLabel.toLowerCase()}` },
           ].map((kpi) => (
             <Card key={kpi.label} className="border-border bg-card shadow-sm">
               <CardContent className="p-4 flex items-start gap-3">
@@ -285,7 +301,7 @@ export default function SellerProfile() {
           {/* Performance de Metas */}
           <Card className="lg:col-span-2 border-border bg-card shadow-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-bold">Performance de Metas — Mês Atual</CardTitle>
+              <CardTitle className="text-sm font-bold">Performance de Metas — {selectedMonthLabel}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {goalLevels.map((g) => {

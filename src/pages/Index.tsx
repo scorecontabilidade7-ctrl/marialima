@@ -26,14 +26,34 @@ interface IndexProps {
 export default function Index({ store = "sobral" }: IndexProps) {
   const now = new Date();
   const { year: currentYear, month: currentMonth } = getDatePartsInTimeZone(now, BR_TIME_ZONE);
-  const [selectedMonth, setSelectedMonth] = useState({ year: currentYear, month: currentMonth });
-
-  const [filters, setFilters] = useState({
-    vendedor: "all",
-    departamento: "all",
-    dataInicio: "",
-    dataFim: "",
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const saved = sessionStorage.getItem("dashboardSelectedMonth");
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return { year: currentYear, month: currentMonth };
   });
+
+  const [filters, setFilters] = useState(() => {
+    const saved = sessionStorage.getItem("dashboardFilters");
+    if (saved) {
+      try { return JSON.parse(saved); } catch(e) {}
+    }
+    return {
+      vendedor: "all",
+      departamento: "all",
+      dataInicio: "",
+      dataFim: "",
+    };
+  });
+
+  useEffect(() => {
+    sessionStorage.setItem("dashboardSelectedMonth", JSON.stringify(selectedMonth));
+  }, [selectedMonth]);
+
+  useEffect(() => {
+    sessionStorage.setItem("dashboardFilters", JSON.stringify(filters));
+  }, [filters]);
 
   const { data, isLoading, error, dataUpdatedAt } = useSalesData(store, {
     year: selectedMonth.year,
@@ -232,13 +252,13 @@ export default function Index({ store = "sobral" }: IndexProps) {
               </div>
             </div>
           ) : activeView === "metas" ? (
-            <MetasTracking ranking={data?.ranking ?? []} timeline={data?.timeline ?? []} selectedMeta={selectedMeta} onMetaChange={setSelectedMeta} store={store} />
+            <MetasTracking ranking={data?.ranking ?? []} timeline={data?.timeline ?? []} selectedMeta={selectedMeta} onMetaChange={setSelectedMeta} store={store} selectedMonth={selectedMonth} />
           ) : (
             <>
               <KPICards kpis={data?.kpis} timeline={data?.timeline ?? []} />
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                <SalesRanking ranking={data?.ranking ?? []} />
+                <SalesRanking ranking={data?.ranking ?? []} selectedMonth={selectedMonth} store={store} />
                 <DepartmentChart
                   departamentos={data?.departamentos ?? []}
                   totalVendas={data?.kpis?.total_vendas ?? 0}

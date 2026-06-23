@@ -6,6 +6,8 @@ import { getSellerPhoto } from "@/lib/sellerPhotos";
 
 interface SalesRankingProps {
   ranking: RankingItem[];
+  selectedMonth?: { year: number; month: number };
+  store?: string;
 }
 
 const TEAL = "hsl(188, 55%, 40%)";
@@ -21,11 +23,20 @@ function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 }
 
-export default function SalesRanking({ ranking }: SalesRankingProps) {
+export default function SalesRanking({ ranking, selectedMonth, store }: SalesRankingProps) {
   const [topN, setTopN] = useState(8);
   const navigate = useNavigate();
 
   const data = ranking.slice(0, topN);
+  
+  const queryParams = new URLSearchParams();
+  if (selectedMonth) {
+    queryParams.set("year", String(selectedMonth.year));
+    queryParams.set("month", String(selectedMonth.month));
+  }
+  if (store) queryParams.set("store", store);
+  const queryStr = queryParams.toString() ? `?${queryParams.toString()}` : "";
+  
   const maxTotal = data[0]?.total || 1;
   const grandTotal = ranking.reduce((s, d) => s + d.total, 0);
 
@@ -66,7 +77,7 @@ export default function SalesRanking({ ranking }: SalesRankingProps) {
               <div
                 key={item.vendedor}
                 className="flex items-center gap-2 cursor-pointer rounded-md px-1 -mx-1 hover:bg-secondary/60 transition-colors"
-                onClick={() => navigate(`/vendedor/${encodeURIComponent(item.vendedor)}`)}
+                onClick={() => navigate(`/vendedor/${encodeURIComponent(item.vendedor)}${queryStr}`)}
               >
                 <span
                   className="text-[11px] font-bold w-5 text-center shrink-0"

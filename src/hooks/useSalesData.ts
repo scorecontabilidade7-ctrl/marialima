@@ -104,40 +104,68 @@ function transformDbDetalhada(raw: any[]): VendaDetalhada[] {
   }));
 }
 
-async function fetchRawSalesData(store: string): Promise<RawSalesData> {
+async function fetchRawSalesData(store: string, sellerName?: string): Promise<RawSalesData> {
   const clienteId = STORE_CLIENT_IDS[store];
   if (!clienteId) {
     throw new Error(`Filial desconhecida ou não configurada: ${store}`);
   }
 
-  const [vendedoresRes, detalhadaRes] = await Promise.all([
-    gigatechSupabase
-      .from("gigatech_vendedores")
-      .select("*")
-      .eq("cliente_id", clienteId),
-    gigatechSupabase
-      .from("gigatech_vendas")
-      .select("*")
-      .eq("cliente_id", clienteId),
-  ]);
+  let vQuery = gigatechSupabase
+    .from("gigatech_vendedores")
+    .select("*")
+    .eq("cliente_id", clienteId)
+    .limit(100000);
+
+  if (sellerName) {
+    vQuery = vQuery.eq("nome_vendedor", sellerName);
+  }
+
+  const vendedoresRes = await vQuery;
 
   if (vendedoresRes.error) {
     throw new Error(`Erro ao buscar vendedores: ${vendedoresRes.error.message}`);
   }
-  if (detalhadaRes.error) {
-    throw new Error(`Erro ao buscar vendas detalhadas: ${detalhadaRes.error.message}`);
+
+  const vends = vendedoresRes.data || [];
+  let detalhadaData: any[] = [];
+
+  if (sellerName) {
+    const cupoms = Array.from(new Set(vends.map((v: any) => v.n_cupom).filter(Boolean)));
+    if (cupoms.length > 0) {
+      const chunkSize = 200;
+      for (let i = 0; i < cupoms.length; i += chunkSize) {
+        const chunk = cupoms.slice(i, i + chunkSize);
+        const chunkRes = await gigatechSupabase
+          .from("gigatech_vendas")
+          .select("*")
+          .eq("cliente_id", clienteId)
+          .in("n_cupom", chunk);
+        if (chunkRes.data) {
+          detalhadaData = detalhadaData.concat(chunkRes.data);
+        }
+      }
+    }
+  } else {
+    const detalhadaRes = await gigatechSupabase
+      .from("gigatech_vendas")
+      .select("*")
+      .eq("cliente_id", clienteId)
+      .limit(100000);
+    if (!detalhadaRes.error && detalhadaRes.data) {
+      detalhadaData = detalhadaRes.data;
+    }
   }
 
   return {
-    vendedores: transformDbVendedores(vendedoresRes.data || []),
-    detalhada: transformDbDetalhada(detalhadaRes.data || []),
+    vendedores: transformDbVendedores(vends),
+    detalhada: transformDbDetalhada(detalhadaData),
   };
 }
 
-export function useRawSalesData(store: "sobral" | "itapipoca" = "sobral") {
+export function useRawSalesData(store: "sobral" | "itapipoca" = "sobral", sellerName?: string) {
   return useQuery({
-    queryKey: ["raw-sales-data", store],
-    queryFn: () => fetchRawSalesData(store),
+    queryKey: ["raw-sales-data", store, sellerName],
+    queryFn: () => fetchRawSalesData(store, sellerName),
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
