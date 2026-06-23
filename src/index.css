@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 22% 97%;
+    --foreground: 220 25% 14%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 25% 14%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 25% 14%;
+
+    --primary: 188 55% 40%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 16% 93%;
+    --secondary-foreground: 220 20% 30%;
+
+    --muted: 210 16% 93%;
+    --muted-foreground: 220 10% 48%;
+
+    --accent: 188 55% 40%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 89%;
+    --input: 220 13% 89%;
+    --ring: 188 55% 40%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 99%;
+    --sidebar-foreground: 220 20% 28%;
+    --sidebar-primary: 188 55% 40%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 188 30% 92%;
+    --sidebar-accent-foreground: 188 55% 28%;
+    --sidebar-border: 220 13% 88%;
+    --sidebar-ring: 188 55% 40%;
+
+    --chart-1: 188 55% 40%;
+    --chart-2: 188 48% 54%;
+    --chart-3: 200 52% 46%;
+    --chart-4: 172 48% 42%;
+    --chart-5: 215 52% 52%;
+  }
+
+  .dark {
+    --background: 222 20% 10%;
+    --foreground: 210 20% 92%;
+
+    --card: 222 20% 13%;
+    --card-foreground: 210 20% 92%;
+
+    --popover: 222 20% 13%;
+    --popover-foreground: 210 20% 92%;
+
+    --primary: 188 55% 48%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 222 15% 18%;
+    --secondary-foreground: 210 15% 75%;
+
+    --muted: 222 15% 18%;
+    --muted-foreground: 215 12% 55%;
+
+    --accent: 188 55% 48%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 65% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 222 14% 20%;
+    --input: 222 14% 20%;
+    --ring: 188 55% 48%;
+
+    --sidebar-background: 222 22% 8%;
+    --sidebar-foreground: 210 18% 78%;
+    --sidebar-primary: 188 55% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 188 30% 16%;
+    --sidebar-accent-foreground: 188 55% 65%;
+    --sidebar-border: 222 14% 16%;
+    --sidebar-ring: 188 55% 48%;
+
+    --chart-1: 188 55% 48%;
+    --chart-2: 188 48% 60%;
+    --chart-3: 200 52% 54%;
+    --chart-4: 172 48% 50%;
+    --chart-5: 215 52% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}

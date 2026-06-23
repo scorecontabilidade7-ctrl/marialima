@@ -1,0 +1,7 @@
+project_id = "yuddpeadtlfwtceoaqpm"
+
+[functions.get-sales-data]
+verify_jwt = false
+
+[functions.admin-create-user]
+verify_jwt = false
