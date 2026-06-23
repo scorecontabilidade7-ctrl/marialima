@@ -4,7 +4,7 @@ import { useRawSalesData, useSalesData } from "@/hooks/useSalesData";
 import { useCurrentMonthGoals } from "@/hooks/useMonthlyGoals";
 import { getSellerPhoto } from "@/lib/sellerPhotos";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, TrendingUp, ShoppingBag, Users, Award, DollarSign } from "lucide-react";
+import { ArrowLeft, TrendingUp, ShoppingBag, Users, Award, DollarSign, RefreshCw } from "lucide-react";
 import { BR_TIME_ZONE, getDatePartsInTimeZone } from "@/lib/utils";
 import {
   AreaChart, Area, BarChart, Bar,
@@ -171,8 +171,16 @@ export default function SellerProfile() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <p className="text-muted-foreground">Carregando...</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-5 animate-in fade-in duration-500">
+          <div className="p-4 rounded-full bg-primary/10">
+            <RefreshCw className="w-8 h-8 text-primary animate-spin" />
+          </div>
+          <div className="space-y-1.5 text-center">
+            <h3 className="text-lg font-bold text-foreground tracking-tight">Carregando perfil...</h3>
+            <p className="text-sm text-muted-foreground">Buscando histórico e desempenho de vendas</p>
+          </div>
+        </div>
       </div>
     );
   }

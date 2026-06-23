@@ -394,17 +394,47 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
             const weekPct = weekMeta > 0 ? Math.min((weekTotal / weekMeta) * 100, 100) : 0;
 
             return (
-              <div key={week.label} className="border border-border/40 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-semibold">{week.label}</h4>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span>Meta: {formatBRLShort(weekMeta)}</span>
-                    <span className={`font-semibold ${weekTotal >= weekMeta ? "text-emerald-600" : "text-foreground"}`}>
-                      Realizado: {formatBRLShort(weekTotal)}
+              <div key={week.label} className="border border-border/50 bg-card rounded-xl p-5 shadow-sm transition-all hover:shadow-md">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+                  <h4 className="text-base font-bold text-foreground flex items-center gap-2">
+                    {week.label}
+                  </h4>
+                  {weekTotal >= weekMeta && weekMeta > 0 ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
+                      🎯 Meta Superada! ({weekPct.toFixed(0)}%)
                     </span>
+                  ) : weekTotal > 0 ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold">
+                      🏃 Faltou {formatBRLShort(weekMeta - weekTotal)} ({weekPct.toFixed(0)}%)
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground text-xs font-medium">
+                      😴 Sem vendas ainda
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
+                  <div className="bg-muted/40 rounded-lg p-3 border border-border/50 flex flex-col justify-center">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">Meta Semanal</p>
+                    <p className="text-xl font-bold text-foreground leading-none">{formatBRLShort(weekMeta)}</p>
+                  </div>
+                  <div className="bg-muted/40 rounded-lg p-3 border border-border/50 flex flex-col justify-center">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">Realizado</p>
+                    <p className={`text-xl font-bold leading-none ${weekTotal >= weekMeta ? "text-emerald-600" : "text-primary"}`}>
+                      {formatBRLShort(weekTotal)}
+                    </p>
+                  </div>
+                  <div className="bg-muted/40 rounded-lg p-3 border border-border/50 col-span-2 sm:col-span-1 flex flex-col justify-center">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">Diferença</p>
+                    <p className={`text-xl font-bold leading-none ${weekTotal - weekMeta >= 0 ? "text-emerald-600" : "text-amber-600"}`}>
+                      {weekTotal - weekMeta > 0 ? "+" : ""}{formatBRLShort(weekTotal - weekMeta)}
+                    </p>
                   </div>
                 </div>
-                <Progress value={weekPct} className="h-2 mb-3" />
+
+                <Progress value={weekPct} className="h-2 mb-5" />
+
                 <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                   {week.days.map((d) => {
                     const key = d.toISOString().slice(0, 10);
@@ -413,17 +443,17 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
                     return (
                       <div
                         key={key}
-                        className={`rounded-md p-2 text-center text-xs ${
+                        className={`rounded-lg p-2.5 text-center transition-colors ${
                           isPast && dayValue > 0
-                            ? "bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800"
+                            ? "bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-800/50"
                             : isPast
-                            ? "bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800"
-                            : "bg-muted/40 border border-border/30"
+                            ? "bg-red-50/50 dark:bg-red-950/10 border border-red-200/50 dark:border-red-800/50"
+                            : "bg-muted/30 border border-border/30"
                         }`}
                       >
-                        <p className="font-medium text-muted-foreground">{DAY_NAMES[d.getUTCDay()]}</p>
-                        <p className="text-[10px] text-muted-foreground/70">{d.getUTCDate()}/{d.getUTCMonth() + 1}</p>
-                        <p className={`font-bold mt-0.5 ${dayValue > 0 ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground/50"}`}>
+                        <p className="text-[11px] font-semibold text-muted-foreground mb-0.5">{DAY_NAMES[d.getUTCDay()]}</p>
+                        <p className="text-[10px] text-muted-foreground/60 mb-1.5">{d.getUTCDate()}/{d.getUTCMonth() + 1}</p>
+                        <p className={`font-bold text-sm leading-none ${dayValue > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/40"}`}>
                           {dayValue > 0 ? formatBRLShort(dayValue) : "—"}
                         </p>
                       </div>

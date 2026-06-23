@@ -59,7 +59,7 @@ export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
   const { theme, toggle } = useTheme();
 
   return (
-    <aside className="w-14 min-h-screen bg-sidebar flex flex-col border-r border-sidebar-border shrink-0">
+    <aside className="w-14 h-screen sticky top-0 bg-sidebar flex flex-col border-r border-sidebar-border shrink-0">
       <div className="h-14 flex items-center justify-center border-b border-sidebar-border shrink-0">
         <img src="/logo.png" alt="Maria Lima" className="w-9 h-9 object-contain" />
       </div>

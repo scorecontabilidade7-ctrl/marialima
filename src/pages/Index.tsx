@@ -183,7 +183,7 @@ export default function Index({ store = "sobral" }: IndexProps) {
         </header>
 
         {/* Filtros — sempre visíveis */}
-        <div className="border-b border-border/40 px-6 py-3 bg-card/50">
+        <div className="sticky top-0 z-40 border-b border-border/40 px-6 py-3 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 shadow-sm">
           <div className="flex flex-wrap items-end gap-3">
             {/* Navegador de mês */}
             <div className="space-y-1.5">
@@ -216,16 +216,16 @@ export default function Index({ store = "sobral" }: IndexProps) {
             />
             {activeView === "metas" && (
               <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground font-medium">Meta</label>
-                <div className="flex items-center border border-border rounded-md overflow-hidden h-9">
+                <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Tipo de Meta</label>
+                <div className="flex items-center bg-secondary/50 p-1 rounded-lg border border-border/40 h-9">
                   {META_OPTIONS.map((opt) => (
                     <button
                       key={opt.key}
                       onClick={() => setSelectedMeta(opt.key)}
-                      className={`px-3 h-full text-xs font-medium transition-colors ${
+                      className={`relative px-4 h-full text-xs font-bold rounded-md transition-all duration-200 ${
                         selectedMeta === opt.key
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:bg-secondary"
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                       }`}
                     >
                       {opt.label}
