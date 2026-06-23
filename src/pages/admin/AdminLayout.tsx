@@ -5,6 +5,7 @@ import { BarChart3, Target, Users, LogOut, LayoutDashboard, ShieldCheck } from "
 const adminNav = [
   { id: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { id: "/admin/metas", label: "Metas", icon: Target },
+  { id: "/admin/vendedores", label: "Vendedores", icon: Users },
   { id: "/admin/usuarios", label: "Usuários", icon: Users },
   { id: "/admin/permissoes", label: "Permissões", icon: ShieldCheck },
 ];

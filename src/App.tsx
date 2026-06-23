@@ -12,6 +12,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
 import GoalsManagement from "./pages/admin/GoalsManagement.tsx";
 import UsersManagement from "./pages/admin/UsersManagement.tsx";
 import PermissionsManagement from "./pages/admin/PermissionsManagement.tsx";
+import VendedoresManagement from "./pages/admin/VendedoresManagement.tsx";
 import SellerProfile from "./pages/SellerProfile.tsx";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
             <Route index element={<AdminDashboard />} />
             <Route path="metas" element={<GoalsManagement />} />
             <Route path="usuarios" element={<UsersManagement />} />
+            <Route path="vendedores" element={<VendedoresManagement />} />
             <Route path="permissoes" element={<PermissionsManagement />} />
           </Route>
           <Route path="/vendedor/:name" element={<SellerProfile />} />

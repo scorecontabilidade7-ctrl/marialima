@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useRawSalesData, useSalesData } from "@/hooks/useSalesData";
 import { useCurrentMonthGoals } from "@/hooks/useMonthlyGoals";
-import { getSellerPhoto } from "@/lib/sellerPhotos";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, TrendingUp, ShoppingBag, Users, Award, DollarSign, RefreshCw } from "lucide-react";
 import { BR_TIME_ZONE, getDatePartsInTimeZone } from "@/lib/utils";
@@ -32,7 +31,7 @@ export default function SellerProfile() {
   const sellerName = decodeURIComponent(name || "");
   const { data, isLoading } = useRawSalesData(store, sellerName);
 
-  const photo = getSellerPhoto(sellerName);
+  const photo = dashboardData?.ranking?.find((r) => r.vendedor === sellerName)?.url_foto;
   const firstName = sellerName.split(" ")[0];
 
   // ── Filter data for this seller ───────────────────────────────────────────

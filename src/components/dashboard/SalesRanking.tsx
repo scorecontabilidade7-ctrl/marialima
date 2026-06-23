@@ -2,8 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { RankingItem } from "@/hooks/useSalesData";
-import { getSellerPhoto } from "@/lib/sellerPhotos";
-
 interface SalesRankingProps {
   ranking: RankingItem[];
   selectedMonth?: { year: number; month: number };
@@ -70,7 +68,7 @@ export default function SalesRanking({ ranking, selectedMonth, store }: SalesRan
           {data.map((item, i) => {
             const pct = grandTotal > 0 ? Math.round((item.total / grandTotal) * 100) : 0;
             const barWidth = Math.round((item.total / maxTotal) * 100);
-            const photo = getSellerPhoto(item.vendedor);
+            const photo = item.url_foto;
             const firstName = item.vendedor.split(" ")[0];
 
             return (

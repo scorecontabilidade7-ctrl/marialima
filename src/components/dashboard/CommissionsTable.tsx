@@ -2,7 +2,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { Vendedor } from "@/hooks/useSalesData";
-import { getSellerPhoto } from "@/lib/sellerPhotos";
 
 interface CommissionsTableProps {
   vendedores: Vendedor[];
@@ -62,7 +61,7 @@ export default function CommissionsTable({ vendedores }: CommissionsTableProps) 
           </TableHeader>
           <TableBody>
             {data.map((row, i) => {
-              const photo = getSellerPhoto(row.vendedor);
+              const photo = row.url_foto;
               return (
                 <TableRow key={row.vendedor} className="border-border/60 hover:bg-secondary/50 transition-colors">
                   <TableCell>

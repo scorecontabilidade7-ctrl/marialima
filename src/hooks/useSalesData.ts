@@ -13,6 +13,7 @@ export interface RankingItem {
   total: number;
   comissao: number;
   qtd_vendas: number;
+  url_foto?: string | null;
 }
 
 export interface TimelineItem {

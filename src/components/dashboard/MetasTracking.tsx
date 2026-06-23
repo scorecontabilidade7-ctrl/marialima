@@ -5,7 +5,6 @@ import { Progress } from "@/components/ui/progress";
 import { Target, TrendingUp, Award, Star, Trophy } from "lucide-react";
 import { useCurrentMonthGoals } from "@/hooks/useMonthlyGoals";
 import type { RankingItem, TimelineItem } from "@/hooks/useSalesData";
-import { getSellerPhoto } from "@/lib/sellerPhotos";
 import { BR_TIME_ZONE, getDatePartsInTimeZone } from "@/lib/utils";
 
 export type MetaKey = "minima" | "top1" | "top2" | "master";
@@ -151,7 +150,7 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
 
   const DIAS_UTEIS_MES = goalData?.dias_uteis ?? 24;
 
-  const sellerTotals = ranking.map(r => ({ name: r.vendedor, total: r.total }));
+  const sellerTotals = ranking.map(r => ({ name: r.vendedor, total: r.total, url_foto: r.url_foto }));
 
   const totalRealized = sellerTotals.reduce((s, v) => s + v.total, 0);
   const sellerCount = Math.max(sellerTotals.length, 1);
@@ -267,7 +266,7 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
                     top2: seller.total - METAS.top2,
                     master: seller.total - METAS.master,
                   };
-                  const photo = getSellerPhoto(seller.name);
+                  const photo = seller.url_foto;
                   return (
                     <tr
                       key={seller.name}
@@ -328,7 +327,7 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
               </thead>
               <tbody>
                 {sellerTotals.map((seller, i) => {
-                  const photo = getSellerPhoto(seller.name);
+                  const photo = seller.url_foto;
                   return (
                   <tr
                     key={seller.name}
