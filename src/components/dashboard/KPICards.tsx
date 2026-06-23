@@ -1,32 +1,17 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { DollarSign, ShoppingCart, TrendingUp, Users } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
-import type { Vendedor } from "@/hooks/useSalesData";
+import type { DashboardKPIs, TimelineItem } from "@/hooks/useSalesData";
 
 interface KPICardsProps {
-  vendedores: Vendedor[];
+  kpis?: DashboardKPIs;
+  timeline: TimelineItem[];
 }
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 }
 
-function generateSparklineData(vendedores: Vendedor[], metric: "valor_total" | "count") {
-  const grouped: Record<string, number> = {};
-  vendedores.forEach((v) => {
-    const date = String(v.data_venda).slice(0, 10);
-    if (!date) return;
-    if (metric === "count") {
-      grouped[date] = (grouped[date] || 0) + 1;
-    } else {
-      grouped[date] = (grouped[date] || 0) + (v[metric] || 0);
-    }
-  });
-  return Object.entries(grouped)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .slice(-20)
-    .map(([, value]) => ({ v: value }));
-}
 
 function computeTrend(data: { v: number }[]): number {
   if (data.length < 2) return 0;
@@ -37,19 +22,16 @@ function computeTrend(data: { v: number }[]): number {
   return Math.round(((second - first) / first) * 100);
 }
 
-export default function KPICards({ vendedores }: KPICardsProps) {
-  const totalVendas = vendedores.reduce((sum, v) => sum + (v.valor_total || 0), 0);
-  const qtdVendas = new Set(vendedores.map((v) => v.numero_venda)).size;
-  const ticketMedio = qtdVendas > 0 ? totalVendas / qtdVendas : 0;
-  const totalComissoes = vendedores.reduce(
-    (sum, v) => sum + (v.comissao_vendedor || 0) + (v.comissao_supervisor || 0),
-    0
-  );
+export default function KPICards({ kpis, timeline }: KPICardsProps) {
+  const totalVendas = kpis?.total_vendas || 0;
+  const qtdVendas = kpis?.qtd_vendas || 0;
+  const ticketMedio = kpis?.ticket_medio || 0;
+  const totalComissoes = kpis?.total_comissoes || 0;
 
-  const sparkSales = generateSparklineData(vendedores, "valor_total");
-  const sparkCount = generateSparklineData(vendedores, "count");
+  const sparkSales = timeline.slice(-20).map((t) => ({ v: t.total }));
+  const sparkCount = timeline.slice(-20).map((t) => ({ v: t.count }));
 
-  const kpis = [
+  const kpiCardsData = [
     {
       label: "TOTAL DE VENDAS",
       value: formatCurrency(totalVendas),
@@ -86,7 +68,7 @@ export default function KPICards({ vendedores }: KPICardsProps) {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-      {kpis.map((kpi) => (
+      {kpiCardsData.map((kpi) => (
         <Card key={kpi.label} className="border-border bg-card shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardContent className="p-5">
             <div className="flex items-start justify-between gap-2">

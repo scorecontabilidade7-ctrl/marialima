@@ -24,12 +24,10 @@ interface IndexProps {
 }
 
 export default function Index({ store = "sobral" }: IndexProps) {
-  const { data, isLoading, error, dataUpdatedAt } = useSalesData(store);
-  const { session, loading: authLoading } = useAuth();
-  const { hasStoreAccess, loading: accessLoading } = useUserAccess();
-  const navigate = useNavigate();
-  const [activeView, setActiveView] = useState("cockpit");
-  const [selectedMeta, setSelectedMeta] = useState<MetaKey>("minima");
+  const now = new Date();
+  const { year: currentYear, month: currentMonth } = getDatePartsInTimeZone(now, BR_TIME_ZONE);
+  const [selectedMonth, setSelectedMonth] = useState({ year: currentYear, month: currentMonth });
+
   const [filters, setFilters] = useState({
     vendedor: "all",
     departamento: "all",
@@ -37,9 +35,19 @@ export default function Index({ store = "sobral" }: IndexProps) {
     dataFim: "",
   });
 
-  const now = new Date();
-  const { year: currentYear, month: currentMonth } = getDatePartsInTimeZone(now, BR_TIME_ZONE);
-  const [selectedMonth, setSelectedMonth] = useState({ year: currentYear, month: currentMonth });
+  const { data, isLoading, error, dataUpdatedAt } = useSalesData(store, {
+    year: selectedMonth.year,
+    month: selectedMonth.month,
+    vendedor: filters.vendedor,
+    departamento: filters.departamento,
+    dataInicio: filters.dataInicio,
+    dataFim: filters.dataFim,
+  });
+  const { session, loading: authLoading } = useAuth();
+  const { hasStoreAccess, loading: accessLoading } = useUserAccess();
+  const navigate = useNavigate();
+  const [activeView, setActiveView] = useState("cockpit");
+  const [selectedMeta, setSelectedMeta] = useState<MetaKey>("minima");
 
   const goToPrevMonth = () => {
     setSelectedMonth((prev) => {
@@ -69,40 +77,7 @@ export default function Index({ store = "sobral" }: IndexProps) {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
-  const filteredData = useMemo(() => {
-    if (!data) return { vendedores: [], detalhada: [] };
 
-    const { year: filterYear, month: filterMonth } = selectedMonth;
-
-    let vendedores = data.vendedores.filter((v) => {
-      if (!v.data_venda) return false;
-      const [y, m] = v.data_venda.split("-");
-      return Number(y) === filterYear && Number(m) === filterMonth;
-    });
-    const currentMonthVendas = new Set(vendedores.map((v) => v.numero_venda));
-    let detalhada = data.detalhada.filter((d) => currentMonthVendas.has(d.venda));
-
-    if (filters.vendedor && filters.vendedor !== "all") {
-      vendedores = vendedores.filter((v) => v.vendedor === filters.vendedor);
-    }
-    if (filters.dataInicio) {
-      vendedores = vendedores.filter((v) => String(v.data_venda).slice(0, 10) >= filters.dataInicio);
-    }
-    if (filters.dataFim) {
-      vendedores = vendedores.filter((v) => String(v.data_venda).slice(0, 10) <= filters.dataFim);
-    }
-    if (filters.vendedor !== "all" || filters.dataInicio || filters.dataFim) {
-      const vendaNumbers = new Set(vendedores.map((v) => v.numero_venda));
-      detalhada = detalhada.filter((d) => vendaNumbers.has(d.venda));
-    }
-    if (filters.departamento && filters.departamento !== "all") {
-      detalhada = detalhada.filter((d) => d.departamento === filters.departamento);
-      const vendaNumbers = new Set(detalhada.map((d) => d.venda));
-      vendedores = vendedores.filter((v) => vendaNumbers.has(v.numero_venda));
-    }
-
-    return { vendedores, detalhada };
-  }, [data, filters, selectedMonth]);
 
   if (authLoading) {
     return (
@@ -215,8 +190,7 @@ export default function Index({ store = "sobral" }: IndexProps) {
               </div>
             </div>
             <DashboardFilters
-              vendedores={data?.vendedores ?? []}
-              detalhada={data?.detalhada ?? []}
+              filterOptions={data?.filter_options}
               filters={filters}
               onFilterChange={handleFilterChange}
             />
@@ -258,20 +232,20 @@ export default function Index({ store = "sobral" }: IndexProps) {
               </div>
             </div>
           ) : activeView === "metas" ? (
-            <MetasTracking vendedores={filteredData.vendedores} selectedMeta={selectedMeta} onMetaChange={setSelectedMeta} store={store} />
+            <MetasTracking ranking={data?.ranking ?? []} timeline={data?.timeline ?? []} selectedMeta={selectedMeta} onMetaChange={setSelectedMeta} store={store} />
           ) : (
             <>
-              <KPICards vendedores={filteredData.vendedores} />
+              <KPICards kpis={data?.kpis} timeline={data?.timeline ?? []} />
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                <SalesRanking vendedores={filteredData.vendedores} />
+                <SalesRanking ranking={data?.ranking ?? []} />
                 <DepartmentChart
-                  detalhada={filteredData.detalhada}
-                  totalVendas={filteredData.vendedores.reduce((s, v) => s + (v.valor_total || 0), 0)}
+                  departamentos={data?.departamentos ?? []}
+                  totalVendas={data?.kpis?.total_vendas ?? 0}
                 />
               </div>
 
-              <SalesTimeline vendedores={filteredData.vendedores} />
+              <SalesTimeline timeline={data?.timeline ?? []} />
             </>
           )}
         </main>

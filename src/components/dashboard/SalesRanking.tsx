@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Vendedor } from "@/hooks/useSalesData";
+import type { RankingItem } from "@/hooks/useSalesData";
 import { getSellerPhoto } from "@/lib/sellerPhotos";
 
 interface SalesRankingProps {
-  vendedores: Vendedor[];
+  ranking: RankingItem[];
 }
 
 const TEAL = "hsl(188, 55%, 40%)";
@@ -21,26 +21,13 @@ function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 }
 
-export default function SalesRanking({ vendedores }: SalesRankingProps) {
+export default function SalesRanking({ ranking }: SalesRankingProps) {
   const [topN, setTopN] = useState(8);
   const navigate = useNavigate();
 
-  const grouped = vendedores.reduce<Record<string, { total: number; comissao: number }>>((acc, v) => {
-    if (v.vendedor) {
-      if (!acc[v.vendedor]) acc[v.vendedor] = { total: 0, comissao: 0 };
-      acc[v.vendedor].total += v.valor_total || 0;
-      acc[v.vendedor].comissao += v.comissao_vendedor || 0;
-    }
-    return acc;
-  }, {});
-
-  const allData = Object.entries(grouped)
-    .map(([name, { total, comissao }]) => ({ name, total, comissao }))
-    .sort((a, b) => b.total - a.total);
-
-  const data = allData.slice(0, topN);
+  const data = ranking.slice(0, topN);
   const maxTotal = data[0]?.total || 1;
-  const grandTotal = allData.reduce((s, d) => s + d.total, 0);
+  const grandTotal = ranking.reduce((s, d) => s + d.total, 0);
 
   return (
     <Card className="border-border bg-card shadow-sm">
@@ -72,14 +59,14 @@ export default function SalesRanking({ vendedores }: SalesRankingProps) {
           {data.map((item, i) => {
             const pct = grandTotal > 0 ? Math.round((item.total / grandTotal) * 100) : 0;
             const barWidth = Math.round((item.total / maxTotal) * 100);
-            const photo = getSellerPhoto(item.name);
-            const firstName = item.name.split(" ")[0];
+            const photo = getSellerPhoto(item.vendedor);
+            const firstName = item.vendedor.split(" ")[0];
 
             return (
               <div
-                key={item.name}
+                key={item.vendedor}
                 className="flex items-center gap-2 cursor-pointer rounded-md px-1 -mx-1 hover:bg-secondary/60 transition-colors"
-                onClick={() => navigate(`/vendedor/${encodeURIComponent(item.name)}`)}
+                onClick={() => navigate(`/vendedor/${encodeURIComponent(item.vendedor)}`)}
               >
                 <span
                   className="text-[11px] font-bold w-5 text-center shrink-0"

@@ -1,10 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
-import type { Vendedor } from "@/hooks/useSalesData";
+import type { TimelineItem } from "@/hooks/useSalesData";
 import { BR_TIME_ZONE } from "@/lib/utils";
 
 interface SalesTimelineProps {
-  vendedores: Vendedor[];
+  timeline: TimelineItem[];
 }
 
 function formatCurrency(value: number) {
@@ -13,18 +13,8 @@ function formatCurrency(value: number) {
   return `R$ ${value.toFixed(0)}`;
 }
 
-export default function SalesTimeline({ vendedores }: SalesTimelineProps) {
-  const grouped = vendedores.reduce<Record<string, number>>((acc, v) => {
-    if (v.data_venda) {
-      const date = String(v.data_venda).slice(0, 10);
-      acc[date] = (acc[date] || 0) + (v.valor_total || 0);
-    }
-    return acc;
-  }, {});
-
-  const data = Object.entries(grouped)
-    .map(([date, total]) => ({ date, total }))
-    .sort((a, b) => a.date.localeCompare(b.date));
+export default function SalesTimeline({ timeline }: SalesTimelineProps) {
+  const data = [...timeline].sort((a, b) => a.date.localeCompare(b.date));
 
   return (
     <Card className="border-border bg-card shadow-sm">

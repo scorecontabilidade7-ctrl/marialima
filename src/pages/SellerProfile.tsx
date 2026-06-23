@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useSalesData } from "@/hooks/useSalesData";
+import { useRawSalesData } from "@/hooks/useSalesData";
 import { useCurrentMonthGoals } from "@/hooks/useMonthlyGoals";
 import { getSellerPhoto } from "@/lib/sellerPhotos";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,7 +27,7 @@ function fmtShort(v: number) {
 export default function SellerProfile() {
   const { name } = useParams<{ name: string }>();
   const navigate = useNavigate();
-  const { data, isLoading } = useSalesData();
+  const { data, isLoading } = useRawSalesData();
   const { data: goalData } = useCurrentMonthGoals();
 
   const sellerName = decodeURIComponent(name || "");

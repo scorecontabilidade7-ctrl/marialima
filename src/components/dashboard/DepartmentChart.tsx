@@ -1,9 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
-import type { VendaDetalhada } from "@/hooks/useSalesData";
+import type { DepartmentItem } from "@/hooks/useSalesData";
 
 interface DepartmentChartProps {
-  detalhada: VendaDetalhada[];
+  departamentos: DepartmentItem[];
   totalVendas: number;
 }
 
@@ -24,18 +24,11 @@ function formatCurrencyShort(value: number) {
   return `R$ ${value.toFixed(0)}`;
 }
 
-export default function DepartmentChart({ detalhada, totalVendas }: DepartmentChartProps) {
-  const grouped = detalhada.reduce<Record<string, number>>((acc, v) => {
-    if (v.departamento) {
-      acc[v.departamento] = (acc[v.departamento] || 0) + (v.subtotal || 0);
-    }
-    return acc;
-  }, {});
-
-  const rawData = Object.entries(grouped)
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 8);
+export default function DepartmentChart({ departamentos, totalVendas }: DepartmentChartProps) {
+  const rawData = departamentos
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 8)
+    .map(d => ({ name: d.departamento, value: d.total }));
 
   const detalhadaTotal = rawData.reduce((s, d) => s + d.value, 0);
   const scale = detalhadaTotal > 0 ? totalVendas / detalhadaTotal : 1;

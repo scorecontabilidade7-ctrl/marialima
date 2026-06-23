@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Target, TrendingUp, Award, Star, Trophy } from "lucide-react";
 import { useCurrentMonthGoals } from "@/hooks/useMonthlyGoals";
-import type { Vendedor } from "@/hooks/useSalesData";
+import type { RankingItem, TimelineItem } from "@/hooks/useSalesData";
 import { getSellerPhoto } from "@/lib/sellerPhotos";
 import { BR_TIME_ZONE, getDatePartsInTimeZone } from "@/lib/utils";
 
@@ -18,7 +18,8 @@ export const META_OPTIONS: { key: MetaKey; label: string }[] = [
 ];
 
 interface MetasTrackingProps {
-  vendedores: Vendedor[];
+  ranking: RankingItem[];
+  timeline: TimelineItem[];
   selectedMeta: MetaKey;
   onMetaChange: (meta: MetaKey) => void;
   store?: string;
@@ -117,7 +118,7 @@ function buildDayTargetsFromWeekdayPercents(weeks: WeekSpec[], metaMensal: numbe
   return targets;
 }
 
-export default function MetasTracking({ vendedores, selectedMeta, onMetaChange, store = "sobral" }: MetasTrackingProps) {
+export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaChange, store = "sobral" }: MetasTrackingProps) {
   const navigate = useNavigate();
   const now = new Date();
   const { year: currentYear, month: currentMonthNum, day: todayDay } = getDatePartsInTimeZone(now, BR_TIME_ZONE);
@@ -135,25 +136,7 @@ export default function MetasTracking({ vendedores, selectedMeta, onMetaChange, 
 
   const DIAS_UTEIS_MES = goalData?.dias_uteis ?? 24;
 
-  const monthVendas = useMemo(
-    () =>
-      vendedores.filter((v) => {
-        if (!v.data_venda) return false;
-        const [y, m] = v.data_venda.split("-");
-        return Number(y) === currentYear && Number(m) === currentMonthNum;
-      }),
-    [vendedores, currentYear, currentMonthNum]
-  );
-
-  const sellerTotals = useMemo(() => {
-    const map: Record<string, number> = {};
-    monthVendas.forEach((v) => {
-      if (v.vendedor) map[v.vendedor] = (map[v.vendedor] || 0) + v.valor_total;
-    });
-    return Object.entries(map)
-      .map(([name, total]) => ({ name, total }))
-      .sort((a, b) => b.total - a.total);
-  }, [monthVendas]);
+  const sellerTotals = ranking.map(r => ({ name: r.vendedor, total: r.total }));
 
   const totalRealized = sellerTotals.reduce((s, v) => s + v.total, 0);
   const sellerCount = Math.max(sellerTotals.length, 1);
@@ -169,12 +152,11 @@ export default function MetasTracking({ vendedores, selectedMeta, onMetaChange, 
 
   const salesByDate = useMemo(() => {
     const map: Record<string, number> = {};
-    monthVendas.forEach((v) => {
-      const key = v.data_venda.slice(0, 10);
-      map[key] = (map[key] || 0) + v.valor_total;
+    timeline.forEach((t) => {
+      map[t.date] = t.total;
     });
     return map;
-  }, [monthVendas]);
+  }, [timeline]);
 
   const distributionMode = ((goalData as any)?.distribution_mode as DistributionMode | undefined) ?? "uniform";
   const distributionPercentages = (goalData as any)?.distribution_percentages as unknown;

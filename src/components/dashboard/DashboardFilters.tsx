@@ -1,10 +1,9 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import type { Vendedor, VendaDetalhada } from "@/hooks/useSalesData";
+import type { FilterOptions } from "@/hooks/useSalesData";
 
 interface DashboardFiltersProps {
-  vendedores: Vendedor[];
-  detalhada: VendaDetalhada[];
+  filterOptions?: FilterOptions;
   filters: {
     vendedor: string;
     departamento: string;
@@ -14,9 +13,9 @@ interface DashboardFiltersProps {
   onFilterChange: (key: string, value: string) => void;
 }
 
-export default function DashboardFilters({ vendedores, detalhada, filters, onFilterChange }: DashboardFiltersProps) {
-  const uniqueVendedores = [...new Set(vendedores.map((v) => v.vendedor).filter(Boolean))].sort();
-  const uniqueDepartamentos = [...new Set(detalhada.map((d) => d.departamento).filter(Boolean))].sort();
+export default function DashboardFilters({ filterOptions, filters, onFilterChange }: DashboardFiltersProps) {
+  const uniqueVendedores = filterOptions?.vendedores || [];
+  const uniqueDepartamentos = filterOptions?.departamentos || [];
 
   return (
     <div className="flex flex-wrap gap-3 items-end">
