@@ -164,19 +164,36 @@ export default function Index({ store = "sobral" }: IndexProps) {
             </button>
           </div>
           <div className="text-right hidden sm:block">
-            <span className="text-xs text-muted-foreground tabular-nums">
-              {new Date().toLocaleDateString("pt-BR", {
-                timeZone: BR_TIME_ZONE,
-                day: "2-digit",
-                month: "long",
-                year: "numeric",
-              })}
-            </span>
-            {dataUpdatedAt ? (
-              <p className="text-xs text-muted-foreground/50 tabular-nums">
-                Atualizado às {formatTimeHMInTimeZone(new Date(dataUpdatedAt), BR_TIME_ZONE)}
-              </p>
-            ) : null}
+            <div className="flex items-center justify-end gap-1.5">
+              <span className="text-sm font-medium text-foreground">
+                {(() => {
+                  const hour = parseInt(new Date().toLocaleTimeString("pt-BR", { timeZone: BR_TIME_ZONE, hour: "2-digit", hour12: false }));
+                  const name = session?.user?.user_metadata?.full_name || session?.user?.email?.split("@")[0] || "";
+                  const firstName = name.split(" ")[0];
+                  if (hour >= 5 && hour < 12) return `Bom dia, ${firstName} ☀️`;
+                  if (hour >= 12 && hour < 18) return `Boa tarde, ${firstName} ☕`;
+                  return `Boa noite, ${firstName} 🌙`;
+                })()}
+              </span>
+            </div>
+            <div className="flex items-center justify-end gap-2 mt-0.5">
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {new Date().toLocaleDateString("pt-BR", {
+                  timeZone: BR_TIME_ZONE,
+                  day: "2-digit",
+                  month: "long",
+                  year: "numeric",
+                })}
+              </span>
+              {dataUpdatedAt ? (
+                <>
+                  <span className="text-xs text-muted-foreground/30">•</span>
+                  <span className="text-xs text-muted-foreground/60 tabular-nums">
+                    Atualizado às {formatTimeHMInTimeZone(new Date(dataUpdatedAt), BR_TIME_ZONE)}
+                  </span>
+                </>
+              ) : null}
+            </div>
           </div>
         </header>
 

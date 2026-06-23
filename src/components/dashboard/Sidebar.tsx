@@ -2,6 +2,7 @@ import { BarChart3, Target, Settings, LogIn, LogOut, Sun, Moon } from "lucide-re
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
+import { useUserAccess } from "@/hooks/useUserAccess";
 
 function TooltipItem({
   icon: Icon,
@@ -45,6 +46,7 @@ function TooltipItem({
 
 export default function Sidebar() {
   const { session, signOut } = useAuth();
+  const { isAdmin } = useUserAccess();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -73,7 +75,7 @@ export default function Sidebar() {
           isActive={isDashboard && view === "metas"}
           onClick={() => navigate(`${targetPath}?view=metas`)}
         />
-        {session && (
+        {isAdmin && (
           <TooltipItem
             icon={Settings}
             label="Admin"
