@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { Vendedor } from "@/hooks/useSalesData";
+import { useVendedoresConfig } from "@/hooks/useVendedoresConfig";
 
 interface CommissionsTableProps {
   vendedores: Vendedor[];
@@ -33,6 +34,8 @@ interface AggRow {
 }
 
 export default function CommissionsTable({ vendedores }: CommissionsTableProps) {
+  const { data: configs } = useVendedoresConfig();
+
   const grouped = vendedores.reduce<Record<string, AggRow>>((acc, v) => {
     const key = v.vendedor || "Desconhecido";
     if (!acc[key]) {
@@ -61,7 +64,8 @@ export default function CommissionsTable({ vendedores }: CommissionsTableProps) 
           </TableHeader>
           <TableBody>
             {data.map((row, i) => {
-              const photo = row.url_foto;
+              const config = configs?.find((c) => c.nome_vendedor === row.vendedor);
+              const photo = config?.url_foto;
               return (
                 <TableRow key={row.vendedor} className="border-border/60 hover:bg-secondary/50 transition-colors">
                   <TableCell>

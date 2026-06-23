@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useSalesData } from "@/hooks/useSalesData";
+import { useSalesData, useDataExtracao } from "@/hooks/useSalesData";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserAccess } from "@/hooks/useUserAccess";
 import KPICards from "@/components/dashboard/KPICards";
@@ -63,6 +63,9 @@ export default function Index({ store = "sobral" }: IndexProps) {
     dataInicio: filters.dataInicio,
     dataFim: filters.dataFim,
   });
+  const { data: maxExtracao } = useDataExtracao();
+  const maxExtracaoDate = maxExtracao ? new Date(maxExtracao) : null;
+
   const { session, loading: authLoading } = useAuth();
   const { hasStoreAccess, loading: accessLoading } = useUserAccess();
   const navigate = useNavigate();
@@ -185,11 +188,11 @@ export default function Index({ store = "sobral" }: IndexProps) {
                   year: "numeric",
                 })}
               </span>
-              {dataUpdatedAt ? (
+              {maxExtracaoDate ? (
                 <>
                   <span className="text-xs text-muted-foreground/30">•</span>
                   <span className="text-xs text-muted-foreground/60 tabular-nums">
-                    Atualizado às {formatTimeHMInTimeZone(new Date(dataUpdatedAt), BR_TIME_ZONE)}
+                    Atualizado às {formatTimeHMInTimeZone(maxExtracaoDate, BR_TIME_ZONE)}
                   </span>
                 </>
               ) : null}

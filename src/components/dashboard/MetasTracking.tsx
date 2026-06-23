@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Target, TrendingUp, Award, Star, Trophy } from "lucide-react";
 import { useCurrentMonthGoals } from "@/hooks/useMonthlyGoals";
+import { useVendedoresConfig } from "@/hooks/useVendedoresConfig";
 import type { RankingItem, TimelineItem } from "@/hooks/useSalesData";
 import { BR_TIME_ZONE, getDatePartsInTimeZone } from "@/lib/utils";
 
@@ -121,6 +122,7 @@ function buildDayTargetsFromWeekdayPercents(weeks: WeekSpec[], metaMensal: numbe
 export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaChange, store = "sobral", selectedMonth }: MetasTrackingProps) {
   const navigate = useNavigate();
   const now = new Date();
+  const { data: configs } = useVendedoresConfig();
   const { year: realYear, month: realMonthNum, day: todayDay } = getDatePartsInTimeZone(now, BR_TIME_ZONE);
   
   const isCurrentMonth = !selectedMonth || (selectedMonth.year === realYear && selectedMonth.month === realMonthNum);
@@ -266,7 +268,8 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
                     top2: seller.total - METAS.top2,
                     master: seller.total - METAS.master,
                   };
-                  const photo = seller.url_foto;
+                  const config = configs?.find((c) => c.nome_vendedor === seller.name);
+                  const photo = config?.url_foto;
                   return (
                     <tr
                       key={seller.name}
@@ -327,7 +330,8 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
               </thead>
               <tbody>
                 {sellerTotals.map((seller, i) => {
-                  const photo = seller.url_foto;
+                  const config = configs?.find((c) => c.nome_vendedor === seller.name);
+                  const photo = config?.url_foto;
                   return (
                   <tr
                     key={seller.name}

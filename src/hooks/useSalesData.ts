@@ -203,3 +203,23 @@ export function useSalesData(store: "sobral" | "itapipoca" = "sobral", filters: 
     refetchOnWindowFocus: false,
   });
 }
+
+export function useDataExtracao() {
+  return useQuery({
+    queryKey: ["data-extracao"],
+    queryFn: async () => {
+      const { data, error } = await gigatechSupabase
+        .from("gigatech_vendedores")
+        .select("data_extracao")
+        .in("cliente_id", [STORE_CLIENT_IDS.sobral, STORE_CLIENT_IDS.itapipoca])
+        .not("data_extracao", "is", null)
+        .order("data_extracao", { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') throw error;
+      return data?.data_extracao as string | null;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
