@@ -188,7 +188,7 @@ export default function SellerProfile() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-full overflow-y-auto bg-background">
       {/* Top bar */}
       <header className="border-b border-border/60 bg-card px-6 py-2 flex items-center justify-between sticky top-0 z-10">
         <button
