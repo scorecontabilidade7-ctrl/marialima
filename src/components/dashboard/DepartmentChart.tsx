@@ -42,9 +42,9 @@ export default function DepartmentChart({ departamentos, totalVendas }: Departme
         <p className="text-xs text-muted-foreground">Distribuição do volume total</p>
       </CardHeader>
       <CardContent className="pb-4">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
           {/* Donut — altura generosa para não cortar */}
-          <div className="relative shrink-0" style={{ width: 160, height: 160 }}>
+          <div className="relative shrink-0 hidden md:block" style={{ width: 160, height: 160 }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
                 <Pie
@@ -72,8 +72,10 @@ export default function DepartmentChart({ departamentos, totalVendas }: Departme
                     border: "1px solid hsl(220,13%,88%)",
                     borderRadius: "6px",
                     fontSize: 12,
-                    color: "hsl(220,20%,14%)",
+                    color: "#000",
                   }}
+                  labelStyle={{ color: "#000", fontWeight: "bold" }}
+                  itemStyle={{ color: "#000" }}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -96,17 +98,17 @@ export default function DepartmentChart({ departamentos, totalVendas }: Departme
                     className="w-2 h-2 rounded-full shrink-0"
                     style={{ backgroundColor: COLORS[i % COLORS.length] }}
                   />
-                  <span className="text-[11px] text-foreground truncate flex-1 font-medium">
+                  <span className="text-[11px] text-foreground truncate w-28 md:flex-1 font-medium">
                     {item.name}
                   </span>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <div className="w-14 h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div className="flex flex-1 md:flex-none items-center gap-2 md:gap-1.5 shrink-0 justify-end">
+                    <div className="flex-1 md:w-14 h-1.5 rounded-full bg-muted overflow-hidden">
                       <div
                         className="h-full rounded-full"
                         style={{ width: `${pct}%`, backgroundColor: COLORS[i % COLORS.length] }}
                       />
                     </div>
-                    <span className="text-[10px] text-muted-foreground tabular-nums w-6 text-right font-medium">
+                    <span className="text-[10px] text-muted-foreground tabular-nums w-8 md:w-6 text-right font-medium shrink-0">
                       {pct}%
                     </span>
                   </div>

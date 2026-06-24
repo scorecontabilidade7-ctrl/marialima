@@ -112,7 +112,7 @@ export default function PermissionsManagement() {
   const getUserStores  = (uid: string) => userStores?.filter((s) => s.user_id === uid) ?? [];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-8">
+    <div className="h-full w-full overflow-y-auto overflow-x-hidden space-y-6 max-w-7xl mx-auto p-4 md:p-8">
       <div className="flex flex-col md:flex-row md:items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} className="shrink-0">
           <ArrowLeft className="w-5 h-5" />
@@ -123,7 +123,7 @@ export default function PermissionsManagement() {
         </div>
       </div>
 
-      <Card className="border border-border/60">
+      <Card className="border border-border/60 w-full overflow-hidden">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
             <Shield className="w-4 h-4 text-primary" />
@@ -131,8 +131,8 @@ export default function PermissionsManagement() {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="w-full overflow-x-auto">
+            <table className="w-full text-sm whitespace-nowrap">
               <thead>
                 <tr className="bg-sidebar text-sidebar-foreground">
                   <th className="text-left px-4 py-2.5 font-medium">Usuário</th>

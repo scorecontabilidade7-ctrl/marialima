@@ -44,12 +44,12 @@ export default function SalesRanking({ ranking, selectedMonth, store }: SalesRan
   return (
     <Card className="border-border bg-card shadow-sm">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-row items-center justify-between w-full">
           <div>
             <CardTitle className="text-sm font-bold text-foreground">Ranking de Vendedores</CardTitle>
-            <p className="text-xs text-muted-foreground mt-0.5">Por volume total de vendas</p>
+            <p className="hidden sm:block text-xs text-muted-foreground mt-0.5">Por volume total de vendas</p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+          <div className="flex items-center">
             <div className="flex items-center gap-1 bg-secondary/80 rounded-lg p-1 border border-border/50">
               <button
                 onClick={() => setViewMode("podium")}
@@ -79,7 +79,7 @@ export default function SalesRanking({ ranking, selectedMonth, store }: SalesRan
         {viewMode === "podium" ? (
           <PodiumView ranking={ranking} configs={configs} navigate={navigate} queryStr={queryStr} />
         ) : (
-          <div className="space-y-2.5 max-h-[280px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
+          <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
           {data.map((item, i) => {
             const pct = grandTotal > 0 ? Math.round((item.total / grandTotal) * 100) : 0;
             const barWidth = Math.round((item.total / maxTotal) * 100);
@@ -88,73 +88,146 @@ export default function SalesRanking({ ranking, selectedMonth, store }: SalesRan
             const firstName = item.vendedor.split(" ")[0];
 
             return (
-              <div
-                key={item.vendedor}
-                className="flex items-center gap-2 cursor-pointer rounded-md px-1 -mx-1 hover:bg-secondary/60 transition-colors"
-                onClick={() => navigate(`/vendedor/${encodeURIComponent(item.vendedor)}${queryStr}`)}
-              >
-                <span
-                  className="text-[11px] font-bold w-5 text-center shrink-0"
-                  style={{ color: i === 0 ? TEAL : "hsl(220,10%,55%)" }}
-                >
-                  #{i + 1}
-                </span>
-
+              <div key={item.vendedor}>
+                {/* --- MOBILE LAYOUT --- */}
                 <div
-                  className="w-7 h-7 rounded-full shrink-0 overflow-hidden flex items-center justify-center text-[10px] font-bold"
-                  style={{
-                    border: `2px solid ${i === 0 ? TEAL : TEAL_LIGHT}`,
-                    backgroundColor: TEAL_LIGHT,
-                    color: TEAL,
-                  }}
+                  className="md:hidden flex items-center gap-3 cursor-pointer rounded-lg p-2 hover:bg-secondary/60 transition-all border border-transparent hover:border-border/50 bg-background/50 hover:shadow-sm"
+                  onClick={() => navigate(`/vendedor/${encodeURIComponent(item.vendedor)}${queryStr}`)}
                 >
-                  {photo ? (
-                    <img src={photo} alt={firstName} className="w-full h-full object-cover" />
-                  ) : (
-                    firstName.slice(0, 2).toUpperCase()
-                  )}
+                  <div className="flex flex-col items-center justify-center shrink-0 w-9">
+                    <span
+                      className="text-[10px] font-black uppercase mb-0.5"
+                      style={{ color: i === 0 ? TEAL : "hsl(220,10%,55%)" }}
+                    >
+                      #{i + 1}
+                    </span>
+                    <div
+                      className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center text-[11px] font-bold shadow-sm"
+                      style={{
+                        border: `2px solid ${i === 0 ? TEAL : TEAL_LIGHT}`,
+                        backgroundColor: TEAL_LIGHT,
+                        color: TEAL,
+                      }}
+                    >
+                      {photo ? (
+                        <img src={photo} alt={firstName} className="w-full h-full object-cover" />
+                      ) : (
+                        firstName.slice(0, 2).toUpperCase()
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex-1 flex flex-col min-w-0">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm font-bold text-foreground truncate pr-2">
+                        {firstName}
+                      </span>
+                      <span
+                        className="text-[10px] font-bold px-1.5 py-0.5 rounded-md shrink-0 tabular-nums shadow-sm"
+                        style={{
+                          backgroundColor: i === 0 ? TEAL : TEAL_LIGHT,
+                          color: i === 0 ? "#fff" : TEAL,
+                        }}
+                      >
+                        {pct}%
+                      </span>
+                    </div>
+
+                    <div className="w-full h-1.5 rounded-full overflow-hidden mb-1.5 shadow-inner" style={{ backgroundColor: TEAL_LIGHT }}>
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${barWidth}%`,
+                          backgroundColor: i === 0 ? TEAL : `hsl(188, ${48 - i * 3}%, ${40 + i * 4}%)`,
+                        }}
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1 mt-1">
+                      <div className="flex justify-between items-center text-[11px]">
+                        <span className="text-[10px] text-muted-foreground uppercase font-semibold">Vendido</span>
+                        <span className="font-medium text-foreground tabular-nums">
+                          {formatCurrency(item.total)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-[11px]">
+                        <span className="text-[10px] text-muted-foreground uppercase font-semibold">Comissão</span>
+                        <span className="text-primary font-bold tabular-nums">
+                          {formatCurrency(item.comissao)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <span className="text-[12px] text-foreground truncate w-[72px] shrink-0 font-medium">
-                  {firstName}
-                </span>
+                {/* --- DESKTOP LAYOUT --- */}
+                <div
+                  className="hidden md:flex items-center gap-2 cursor-pointer rounded-md px-1 -mx-1 hover:bg-secondary/60 transition-colors"
+                  onClick={() => navigate(`/vendedor/${encodeURIComponent(item.vendedor)}${queryStr}`)}
+                >
+                  <span
+                    className="text-[11px] font-bold w-5 text-center shrink-0"
+                    style={{ color: i === 0 ? TEAL : "hsl(220,10%,55%)" }}
+                  >
+                    #{i + 1}
+                  </span>
 
-                <div className="flex-1 flex items-center gap-2 min-w-0">
-                  <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ backgroundColor: TEAL_LIGHT }}>
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{
-                        width: `${barWidth}%`,
-                        backgroundColor: i === 0 ? TEAL : `hsl(188, ${48 - i * 3}%, ${40 + i * 4}%)`,
-                      }}
-                    />
+                  <div
+                    className="w-7 h-7 rounded-full shrink-0 overflow-hidden flex items-center justify-center text-[10px] font-bold"
+                    style={{
+                      border: `2px solid ${i === 0 ? TEAL : TEAL_LIGHT}`,
+                      backgroundColor: TEAL_LIGHT,
+                      color: TEAL,
+                    }}
+                  >
+                    {photo ? (
+                      <img src={photo} alt={firstName} className="w-full h-full object-cover" />
+                    ) : (
+                      firstName.slice(0, 2).toUpperCase()
+                    )}
                   </div>
-                  <span className="text-[11px] text-muted-foreground tabular-nums shrink-0 w-14 text-right">
-                    {formatCurrencyShort(item.total)}
+
+                  <span className="text-[12px] text-foreground truncate w-[72px] shrink-0 font-medium">
+                    {firstName}
+                  </span>
+
+                  <div className="flex-1 flex items-center gap-2 min-w-0">
+                    <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ backgroundColor: TEAL_LIGHT }}>
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${barWidth}%`,
+                          backgroundColor: i === 0 ? TEAL : `hsl(188, ${48 - i * 3}%, ${40 + i * 4}%)`,
+                        }}
+                      />
+                    </div>
+                    <span className="text-[11px] font-medium text-foreground tabular-nums shrink-0 w-20 text-right">
+                      {formatCurrency(item.total)}
+                    </span>
+                  </div>
+
+                  <span
+                    className="text-[11px] font-bold px-1.5 py-0.5 rounded shrink-0 w-9 text-center tabular-nums"
+                    style={{
+                      backgroundColor: i === 0 ? TEAL : TEAL_LIGHT,
+                      color: i === 0 ? "#fff" : TEAL,
+                    }}
+                  >
+                    {pct}%
+                  </span>
+
+                  <span className="text-[11px] text-primary tabular-nums shrink-0 w-16 text-right font-semibold">
+                    {formatCurrency(item.comissao)}
                   </span>
                 </div>
-
-                <span
-                  className="text-[11px] font-bold px-1.5 py-0.5 rounded shrink-0 w-9 text-center tabular-nums"
-                  style={{
-                    backgroundColor: i === 0 ? TEAL : TEAL_LIGHT,
-                    color: i === 0 ? "#fff" : TEAL,
-                  }}
-                >
-                  {pct}%
-                </span>
-
-                <span className="text-[11px] text-primary tabular-nums shrink-0 w-16 text-right font-semibold">
-                  {formatCurrency(item.comissao)}
-                </span>
               </div>
             );
           })}
 
           {data.length > 0 && (
-            <div className="pt-2 border-t border-border/40 flex justify-between text-[11px] text-muted-foreground">
-              <span className="font-medium">Total</span>
-              <span className="font-semibold text-foreground tabular-nums">
+            <div className="mt-2 pt-3 border-t border-border/40 flex justify-between items-center px-2">
+              <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Total em Comissões</span>
+              <span className="font-bold text-primary tabular-nums">
                 {formatCurrency(data.reduce((s, d) => s + d.comissao, 0))}
               </span>
             </div>
@@ -176,7 +249,7 @@ function PodiumView({ ranking, configs, navigate, queryStr }: any) {
   if (top3[2]) podiumOrder.push({ ...top3[2], pos: 3 });
 
   return (
-    <div className="flex items-end justify-center gap-2 sm:gap-6 h-[280px] pt-8 pb-4">
+    <div className="flex items-end justify-center gap-2 sm:gap-6 h-[280px] mt-12 pt-8 pb-4">
       {podiumOrder.map((item) => {
         const config = configs?.find((c: any) => c.nome_vendedor === item.vendedor);
         const photo = config?.url_foto;
@@ -208,7 +281,7 @@ function PodiumView({ ranking, configs, navigate, queryStr }: any) {
             {/* Avatar & Info */}
             <div className={`relative mb-3 flex flex-col items-center z-10`}>
               {isFirst && (
-                <Trophy className="w-8 h-8 text-amber-500 absolute -top-10 animate-bounce drop-shadow-md" />
+                <Trophy className="w-8 h-8 text-amber-500 absolute -top-8 animate-bounce drop-shadow-md" />
               )}
               <div className={`rounded-full overflow-hidden border-4 ${borderColor} bg-background shadow-xl ${isFirst ? 'w-20 h-20' : 'w-16 h-16'} transition-transform duration-300 group-hover:scale-110 relative`}>
                 {photo ? (

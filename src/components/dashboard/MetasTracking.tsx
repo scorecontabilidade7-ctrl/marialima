@@ -243,7 +243,7 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
       </div>
 
       {/* Vendas/Mês Diferença Table */}
-      <Card className="border border-border/60">
+      <Card className="hidden md:block border border-border/60">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold">Vendas/Mês — Diferença para Metas</CardTitle>
         </CardHeader>
@@ -312,7 +312,7 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
       </Card>
 
       {/* Comissões Table */}
-      <Card className="border border-border/60">
+      <Card className="hidden md:block border border-border/60">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold">Comissões por Nível de Meta</CardTitle>
         </CardHeader>
@@ -366,6 +366,78 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
         </CardContent>
       </Card>
 
+      {/* Mobile Unified Seller Cards */}
+      <div className="block md:grid md:grid-cols-2 gap-4 md:hidden space-y-4 md:space-y-0">
+        {sellerTotals.map((seller, i) => {
+          const diffs = {
+            minima: seller.total - METAS.minima,
+            top1: seller.total - METAS.top1,
+            top2: seller.total - METAS.top2,
+            master: seller.total - METAS.master,
+          };
+          const config = configs?.find((c) => c.nome_vendedor === seller.name);
+          const photo = config?.url_foto;
+          const metasKeys = [
+            { key: "minima" as const, label: "Meta Mínima" },
+            { key: "top1" as const, label: "Top 1" },
+            { key: "top2" as const, label: "Top 2" },
+            { key: "master" as const, label: "Master" }
+          ];
+
+          return (
+            <Card 
+              key={seller.name} 
+              className="border border-border/60 shadow-sm cursor-pointer hover:shadow-md transition-shadow bg-card"
+              onClick={() => navigate(`/vendedor/${encodeURIComponent(seller.name)}${queryStr}`)}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-border/40">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full ${AVATAR_COLORS[i % AVATAR_COLORS.length]} flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden`}>
+                      {photo ? (
+                        <img src={photo} alt={seller.name} className="w-full h-full object-cover" />
+                      ) : (
+                        getInitials(seller.name)
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-bold text-base text-foreground leading-none">{seller.name}</p>
+                      <p className="text-[11px] text-muted-foreground mt-1.5 uppercase tracking-wide font-medium">
+                        Realizado: <span className="font-bold text-primary">{formatBRL(seller.total)}</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  {metasKeys.map(({ key, label }) => {
+                    const diff = diffs[key];
+                    const reached = diff >= 0;
+                    return (
+                      <div key={key} className="flex items-center justify-between text-xs">
+                        <span className="font-medium text-foreground">{label}</span>
+                        {reached ? (
+                          <span className="inline-flex items-center gap-1 font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded text-[10px] uppercase border border-emerald-200 dark:border-emerald-800/50">
+                            ✅ Atingido
+                          </span>
+                        ) : (
+                          <span className="font-semibold text-red-500 bg-red-50/50 dark:bg-red-950/20 px-2 py-0.5 rounded text-[10px] uppercase border border-red-100 dark:border-red-900/30">
+                            Falta {formatBRLShort(Math.abs(diff))}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+        {sellerTotals.length === 0 && (
+          <p className="text-center py-6 text-sm text-muted-foreground">Nenhuma venda no mês atual</p>
+        )}
+      </div>
+
       {/* Weekly tracking */}
       <Card className="border border-border/60">
         <CardHeader className="pb-3">
@@ -408,7 +480,7 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
                     </span>
                   ) : weekTotal > 0 ? (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold">
-                      🏃 Faltou {formatBRLShort(weekMeta - weekTotal)} ({weekPct.toFixed(0)}%)
+                      🏃 Faltou <span className="md:hidden">{formatBRLShort(weekMeta - weekTotal)}</span><span className="hidden md:inline">{formatBRL(weekMeta - weekTotal)}</span> ({weekPct.toFixed(0)}%)
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground text-xs font-medium">
@@ -417,21 +489,27 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
-                  <div className="bg-muted/40 rounded-lg p-3 border border-border/50 flex flex-col justify-center">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">Meta Semanal</p>
-                    <p className="text-xl font-bold text-foreground leading-none">{formatBRLShort(weekMeta)}</p>
-                  </div>
-                  <div className="bg-muted/40 rounded-lg p-3 border border-border/50 flex flex-col justify-center">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">Realizado</p>
-                    <p className={`text-xl font-bold leading-none ${weekTotal >= weekMeta ? "text-emerald-600" : "text-primary"}`}>
-                      {formatBRLShort(weekTotal)}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-5">
+                  <div className="bg-muted/40 rounded-lg p-2.5 sm:p-3 border border-border/50 flex flex-col justify-center min-w-0">
+                    <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1 truncate">Meta Semanal</p>
+                    <p className="text-base sm:text-xl font-bold text-foreground leading-none truncate">
+                      <span className="md:hidden">{formatBRLShort(weekMeta)}</span>
+                      <span className="hidden md:inline">{formatBRL(weekMeta)}</span>
                     </p>
                   </div>
-                  <div className="bg-muted/40 rounded-lg p-3 border border-border/50 col-span-2 sm:col-span-1 flex flex-col justify-center">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">Diferença</p>
-                    <p className={`text-xl font-bold leading-none ${weekTotal - weekMeta >= 0 ? "text-emerald-600" : "text-amber-600"}`}>
-                      {weekTotal - weekMeta > 0 ? "+" : ""}{formatBRLShort(weekTotal - weekMeta)}
+                  <div className="bg-muted/40 rounded-lg p-2.5 sm:p-3 border border-border/50 flex flex-col justify-center min-w-0">
+                    <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1 truncate">Realizado</p>
+                    <p className={`text-base sm:text-xl font-bold leading-none truncate ${weekTotal >= weekMeta ? "text-emerald-600" : "text-primary"}`}>
+                      <span className="md:hidden">{formatBRLShort(weekTotal)}</span>
+                      <span className="hidden md:inline">{formatBRL(weekTotal)}</span>
+                    </p>
+                  </div>
+                  <div className="bg-muted/40 rounded-lg p-2.5 sm:p-3 border border-border/50 col-span-2 sm:col-span-1 flex flex-col justify-center min-w-0">
+                    <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1 truncate">Diferença</p>
+                    <p className={`text-base sm:text-xl font-bold leading-none truncate ${weekTotal - weekMeta >= 0 ? "text-emerald-600" : "text-amber-600"}`}>
+                      {weekTotal - weekMeta > 0 ? "+" : ""}
+                      <span className="md:hidden">{formatBRLShort(weekTotal - weekMeta)}</span>
+                      <span className="hidden md:inline">{formatBRL(weekTotal - weekMeta)}</span>
                     </p>
                   </div>
                 </div>
@@ -457,7 +535,12 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
                         <p className="text-[11px] font-semibold text-muted-foreground mb-0.5">{DAY_NAMES[d.getUTCDay()]}</p>
                         <p className="text-[10px] text-muted-foreground/60 mb-1.5">{d.getUTCDate()}/{d.getUTCMonth() + 1}</p>
                         <p className={`font-bold text-sm leading-none ${dayValue > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/40"}`}>
-                          {dayValue > 0 ? formatBRLShort(dayValue) : "—"}
+                          {dayValue > 0 ? (
+                            <>
+                              <span className="md:hidden">{formatBRLShort(dayValue)}</span>
+                              <span className="hidden md:inline">{formatBRL(dayValue)}</span>
+                            </>
+                          ) : "—"}
                         </p>
                       </div>
                     );

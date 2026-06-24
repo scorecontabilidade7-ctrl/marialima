@@ -7,7 +7,7 @@ import { ArrowLeft, TrendingUp, ShoppingBag, Users, Award, DollarSign, RefreshCw
 import { BR_TIME_ZONE, getDatePartsInTimeZone } from "@/lib/utils";
 import { calculateSingleDynamicCommission } from "@/hooks/useDynamicCommissions";
 import {
-  AreaChart, Area, BarChart, Bar,
+  AreaChart, Area, BarChart, Bar, LabelList, ReferenceLine,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
 } from "recharts";
 
@@ -22,6 +22,11 @@ function fmtShort(v: number) {
   if (Math.abs(v) >= 1_000_000) return `R$ ${(v / 1_000_000).toFixed(1)}M`;
   if (Math.abs(v) >= 1_000) return `R$ ${(v / 1_000).toFixed(1)}K`;
   return `R$ ${v.toFixed(0)}`;
+}
+function formatMobileLabel(value: number) {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}k`;
+  return value.toFixed(0);
 }
 
 import { useVendedoresConfig } from "@/hooks/useVendedoresConfig";
@@ -173,10 +178,10 @@ export default function SellerProfile() {
     : { minima: 18000, top1: 22000, top2: 26000, master: 30000 };
 
   const goalLevels = [
-    { label: "Meta Mínima", value: metas.minima, color: "hsl(215 52% 52%)" },
-    { label: "Top 1",       value: metas.top1,   color: "hsl(188 55% 40%)" },
-    { label: "Top 2",       value: metas.top2,   color: "hsl(172 48% 42%)" },
-    { label: "Master",      value: metas.master, color: "hsl(38 92% 50%)"  },
+    { label: "Meta Mínima", value: metas.minima, color: "hsl(215 52% 52%)", perc: 0.010 },
+    { label: "Top 1",       value: metas.top1,   color: "hsl(188 55% 40%)", perc: 0.013 },
+    { label: "Top 2",       value: metas.top2,   color: "hsl(172 48% 42%)", perc: 0.015 },
+    { label: "Master",      value: metas.master, color: "hsl(38 92% 50%)",  perc: 0.020 },
   ];
 
   if (isLoading) {
@@ -256,7 +261,7 @@ export default function SellerProfile() {
                 <span className="w-2 h-2 rounded-full" style={{ backgroundColor: TEAL }} />
                 <span className="text-[11px] font-semibold uppercase tracking-wider">{selectedMonthLabel}</span>
               </div>
-              <p className="text-3xl font-bold leading-none" style={{ color: TEAL }}>{fmtShort(totalMes)}</p>
+              <p className="text-2xl sm:text-3xl font-bold leading-none truncate" style={{ color: TEAL }}>{fmt(totalMes)}</p>
               <p className="text-xs text-muted-foreground mt-1.5">{monthVendas.length} pedido{monthVendas.length !== 1 ? "s" : ""}</p>
             </div>
           </CardContent>
@@ -265,20 +270,30 @@ export default function SellerProfile() {
         {/* ── KPI strip ─────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { label: "Total Histórico",  value: fmtShort(totalGeral),   icon: DollarSign,  sub: `${numPedidos} pedidos` },
+            { 
+              label: "Total Histórico",  
+              value: (
+                <>
+                  <span className="sm:hidden">{fmtShort(totalGeral)}</span>
+                  <span className="hidden sm:inline">{fmt(totalGeral)}</span>
+                </>
+              ), 
+              icon: DollarSign,  
+              sub: `${numPedidos} pedidos` 
+            },
             { label: "Comissão no Mês",   value: fmtShort(displayComissao), icon: Award,       sub: commissionMode === "dinamica" ? "dinâmica" : "fixa" },
             { label: "Ticket Médio",     value: fmtShort(ticketMedio),  icon: TrendingUp,  sub: "por pedido" },
             { label: "Pedidos no Mês",   value: String(monthVendas.length), icon: ShoppingBag, sub: `em ${selectedMonthLabel.toLowerCase()}` },
           ].map((kpi) => (
-            <Card key={kpi.label} className="border-border bg-card shadow-sm">
-              <CardContent className="p-4 flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: TEAL_LIGHT }}>
-                  <kpi.icon className="w-4 h-4" style={{ color: TEAL }} />
+            <Card key={kpi.label} className="border-border bg-card shadow-sm overflow-hidden">
+              <CardContent className="p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center gap-1.5 sm:gap-3">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg flex items-center justify-center shrink-0" style={{ background: TEAL_LIGHT }}>
+                  <kpi.icon className="w-3 h-3 sm:w-4 sm:h-4" style={{ color: TEAL }} />
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">{kpi.label}</p>
-                  <p className="text-lg font-bold text-foreground">{kpi.value}</p>
-                  <p className="text-[10px] text-muted-foreground">{kpi.sub}</p>
+                <div className="min-w-0 w-full">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{kpi.label}</p>
+                  <p className="text-base sm:text-lg font-bold text-foreground truncate">{kpi.value}</p>
+                  <p className="text-[9px] sm:text-[10px] text-muted-foreground truncate">{kpi.sub}</p>
                 </div>
               </CardContent>
             </Card>
@@ -291,27 +306,74 @@ export default function SellerProfile() {
           {/* Histórico mensal */}
           <Card className="lg:col-span-3 border-border bg-card shadow-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-bold">Histórico de Vendas Mensais</CardTitle>
+              <CardTitle className="text-sm font-bold">
+                <span className="hidden md:inline">Histórico de Vendas Mensais</span>
+                <span className="md:hidden">Histórico (Últimos 6 Meses)</span>
+              </CardTitle>
+              {metas.minima > 0 && (
+                <p className="text-[11px] text-muted-foreground md:hidden mt-0.5 font-medium">
+                  Comparado à meta mínima de {fmt(metas.minima)}
+                </p>
+              )}
             </CardHeader>
             <CardContent>
               {monthlyHistory.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-8 text-center">Sem dados históricos</p>
               ) : (
-                <ResponsiveContainer width="100%" height={200}>
-                  <AreaChart data={monthlyHistory} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="spGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%"  stopColor={TEAL} stopOpacity={0.25} />
-                        <stop offset="95%" stopColor={TEAL} stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                    <YAxis tickFormatter={fmtShort} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={55} />
-                    <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ fontSize: 12 }} />
-                    <Area type="monotone" dataKey="total" stroke={TEAL} strokeWidth={2} fill="url(#spGrad)" dot={{ r: 3, fill: TEAL }} />
-                  </AreaChart>
-                </ResponsiveContainer>
+                <>
+                  {/* --- MOBILE LAYOUT (Last 6 months, Bar Chart, No Y Axis) --- */}
+                  <div className="block md:hidden">
+                    <ResponsiveContainer width="100%" height={240}>
+                      <BarChart data={monthlyHistory.slice(-6)} margin={{ top: 30, right: 0, left: 0, bottom: 0 }}>
+                        <XAxis dataKey="label" tick={{ fill: "hsl(var(--foreground))", fontSize: 10, fontWeight: "500" }} tickLine={false} axisLine={false} />
+                        <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ backgroundColor: "#fff", color: "#000", fontSize: 12, borderRadius: "6px" }} labelStyle={{ color: "#000", fontWeight: "bold" }} itemStyle={{ color: "#000" }} cursor={{ fill: "hsl(220,13%,95%)" }} />
+                        {metas.minima > 0 && (
+                          <ReferenceLine y={metas.minima} stroke="hsl(220,10%,60%)" strokeDasharray="3 3" />
+                        )}
+                        <Bar dataKey="total" fill={TEAL} radius={[4, 4, 0, 0]} maxBarSize={40}>
+                          <LabelList
+                            dataKey="total"
+                            position="top"
+                            content={(props: any) => {
+                              const { x, y, width, value } = props;
+                              const hit = value >= metas.minima;
+                              const formatted = formatMobileLabel(value);
+                              return (
+                                <g transform={`translate(${x + width / 2},${y - 4})`}>
+                                  <text x={0} y={-10} fontSize="12" textAnchor="middle">
+                                    {hit ? "🎯" : "⚠️"}
+                                  </text>
+                                  <text x={0} y={2} fill="hsl(var(--foreground))" fontSize="10" textAnchor="middle" fontWeight="bold">
+                                    {formatted}
+                                  </text>
+                                </g>
+                              );
+                            }}
+                          />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* --- DESKTOP LAYOUT (Full 12 months, Area Chart) --- */}
+                  <div className="hidden md:block">
+                    <ResponsiveContainer width="100%" height={200}>
+                      <AreaChart data={monthlyHistory} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="spGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%"  stopColor={TEAL} stopOpacity={0.25} />
+                            <stop offset="95%" stopColor={TEAL} stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                        <YAxis tickFormatter={fmtShort} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={55} />
+                        <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ backgroundColor: "#fff", color: "#000", fontSize: 12 }} labelStyle={{ color: "#000", fontWeight: "bold" }} itemStyle={{ color: "#000" }} />
+                        <Area type="monotone" dataKey="total" stroke={TEAL} strokeWidth={2} fill="url(#spGrad)" dot={{ r: 3, fill: TEAL }} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -330,7 +392,7 @@ export default function SellerProfile() {
                     <div className="flex justify-between text-xs mb-1">
                       <span className="font-medium text-foreground">{g.label}</span>
                       <span className={reached ? "font-bold" : "text-muted-foreground"} style={reached ? { color: g.color } : {}}>
-                        {reached ? "✓ Atingida" : `${pct.toFixed(0)}% — faltam ${fmtShort(g.value - totalMes)}`}
+                        {reached ? "✓ Atingida" : `${pct.toFixed(0)}% — faltam ${fmt(g.value - totalMes)}`}
                       </span>
                     </div>
                     <div className="h-2 rounded-full overflow-hidden bg-muted">
@@ -339,7 +401,10 @@ export default function SellerProfile() {
                         style={{ width: `${pct}%`, backgroundColor: g.color }}
                       />
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-0.5 text-right">{fmtShort(g.value)}</p>
+                    <div className="flex justify-between items-center mt-0.5">
+                      <p className="text-[10px] text-muted-foreground">Comissão ({(g.perc * 100).toFixed(1).replace(".", ",")}%): <span className="font-medium">{fmt(g.value * g.perc)}</span></p>
+                      <p className="text-[10.5px] text-muted-foreground text-right">{fmt(g.value)}</p>
+                    </div>
                   </div>
                 );
               })}
@@ -364,7 +429,7 @@ export default function SellerProfile() {
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
                     <XAxis type="number" tickFormatter={fmtShort} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
                     <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                    <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ fontSize: 12 }} />
+                    <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ backgroundColor: "#fff", color: "#000", fontSize: 12 }} labelStyle={{ color: "#000", fontWeight: "bold" }} itemStyle={{ color: "#000" }} />
                     <Bar dataKey="total" radius={[0, 4, 4, 0]}>
                       {topDepts.map((_, i) => (
                         <Cell key={i} fill={`hsl(188, ${55 - i * 5}%, ${40 + i * 5}%)`} />
@@ -401,8 +466,9 @@ export default function SellerProfile() {
                             <div className="h-full rounded-full" style={{ width: `${barW}%`, backgroundColor: TEAL }} />
                           </div>
                         </div>
-                        <span className="text-[11px] tabular-nums font-semibold shrink-0 w-16 text-right" style={{ color: TEAL }}>
-                          {fmtShort(c.total)}
+                        <span className="text-[11px] tabular-nums font-semibold shrink-0 w-16 md:w-24 text-right" style={{ color: TEAL }}>
+                          <span className="md:hidden">{fmtShort(c.total)}</span>
+                          <span className="hidden md:inline">{fmt(c.total)}</span>
                         </span>
                       </div>
                     );

@@ -89,7 +89,7 @@ export default function VendedoresManagement() {
   }
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-8">
+    <div className="h-full overflow-y-auto space-y-6 max-w-7xl mx-auto p-4 md:p-8">
       <div className="flex items-center gap-4 mb-4">
         <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} className="shrink-0">
           <ArrowLeft className="w-5 h-5" />

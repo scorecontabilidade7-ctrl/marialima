@@ -25,7 +25,7 @@ export default function DashboardFilters({ filterOptions, filters, selectedMonth
   const todayStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
   return (
-    <div className="flex flex-wrap gap-3 items-end">
+    <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:items-end w-full">
       <div className="space-y-1.5">
         <label className="text-xs text-muted-foreground font-medium">Data Início</label>
         <Input
@@ -33,7 +33,7 @@ export default function DashboardFilters({ filterOptions, filters, selectedMonth
           value={filters.dataInicio}
           max={filters.dataFim || todayStr}
           onChange={(e) => onFilterChange("dataInicio", e.target.value)}
-          className="w-40 h-9 bg-secondary border-border/50 text-sm"
+          className="w-full sm:w-40 h-9 bg-secondary border-border/50 text-sm"
         />
       </div>
       <div className="space-y-1.5">
@@ -44,13 +44,13 @@ export default function DashboardFilters({ filterOptions, filters, selectedMonth
           min={filters.dataInicio || undefined}
           max={todayStr}
           onChange={(e) => onFilterChange("dataFim", e.target.value)}
-          className="w-40 h-9 bg-secondary border-border/50 text-sm"
+          className="w-full sm:w-40 h-9 bg-secondary border-border/50 text-sm"
         />
       </div>
       <div className="space-y-1.5">
         <label className="text-xs text-muted-foreground font-medium">Vendedor</label>
         <Select value={filters.vendedor} onValueChange={(v) => onFilterChange("vendedor", v)}>
-          <SelectTrigger className="w-48 h-9 bg-secondary border-border/50 text-sm">
+          <SelectTrigger className="w-full sm:w-48 h-9 bg-secondary border-border/50 text-sm">
             <SelectValue placeholder="Todos" />
           </SelectTrigger>
           <SelectContent>
@@ -64,7 +64,7 @@ export default function DashboardFilters({ filterOptions, filters, selectedMonth
       <div className="space-y-1.5">
         <label className="text-xs text-muted-foreground font-medium">Departamento</label>
         <Select value={filters.departamento} onValueChange={(v) => onFilterChange("departamento", v)}>
-          <SelectTrigger className="w-48 h-9 bg-secondary border-border/50 text-sm">
+          <SelectTrigger className="w-full sm:w-48 h-9 bg-secondary border-border/50 text-sm">
             <SelectValue placeholder="Todos" />
           </SelectTrigger>
           <SelectContent>
