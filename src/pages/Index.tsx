@@ -71,6 +71,21 @@ export default function Index({ store = "sobral" }: IndexProps) {
     (initialCommissionStr as "fixa" | "dinamica") || "dinamica"
   );
 
+  const clearFilters = () => {
+    setFilters({
+      vendedor: "all",
+      departamento: "all",
+      dataInicio: "",
+      dataFim: "",
+    });
+  };
+
+  const hasActiveFilters = 
+    filters.vendedor !== "all" || 
+    filters.departamento !== "all" || 
+    filters.dataInicio !== "" || 
+    filters.dataFim !== "";
+
   useEffect(() => {
     sessionStorage.setItem("dashboardSelectedMonth", JSON.stringify(selectedMonth));
   }, [selectedMonth]);
@@ -274,7 +289,7 @@ export default function Index({ store = "sobral" }: IndexProps) {
                   <span>Filtros</span>
                 </button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[85vw] sm:max-w-md overflow-y-auto">
+              <SheetContent side="right" className="w-[85vw] sm:max-w-md overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
                 <SheetHeader className="mb-5 text-left">
                   <SheetTitle>Filtros do Dashboard</SheetTitle>
                   <SheetDescription>
@@ -287,6 +302,8 @@ export default function Index({ store = "sobral" }: IndexProps) {
                     filters={filters}
                     selectedMonth={selectedMonth}
                     onFilterChange={handleFilterChange}
+                    onClearFilters={clearFilters}
+                    hasActiveFilters={hasActiveFilters}
                   />
                   
                   {activeView === "metas" && (
@@ -416,6 +433,8 @@ export default function Index({ store = "sobral" }: IndexProps) {
               filters={filters}
               selectedMonth={selectedMonth}
               onFilterChange={handleFilterChange}
+              onClearFilters={clearFilters}
+              hasActiveFilters={hasActiveFilters}
             />
             {activeView === "metas" && (
               <div className="space-y-1.5">
