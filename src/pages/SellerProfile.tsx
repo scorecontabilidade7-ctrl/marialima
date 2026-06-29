@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useRawSalesData, useSalesData } from "@/hooks/useSalesData";
 import { useCurrentMonthGoals } from "@/hooks/useMonthlyGoals";
@@ -40,7 +40,15 @@ export default function SellerProfile() {
   const sellerName = decodeURIComponent(name || "");
   const { data, isLoading } = useRawSalesData(store, sellerName);
   const { data: configs } = useVendedoresConfig();
-  const { isSeller } = useUserAccess();
+  const { isSeller, profileData } = useUserAccess();
+
+  useEffect(() => {
+    if (isSeller && profileData?.nome_vendedor) {
+      if (sellerName !== profileData.nome_vendedor) {
+        navigate(`/vendedor/${encodeURIComponent(profileData.nome_vendedor)}?store=${profileData.loja || 'sobral'}`, { replace: true });
+      }
+    }
+  }, [isSeller, profileData, sellerName, navigate]);
 
   const photo = configs?.find((c) => c.nome_vendedor === sellerName)?.url_foto;
   const firstName = sellerName.split(" ")[0];
