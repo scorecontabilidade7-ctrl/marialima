@@ -138,34 +138,32 @@ export default function UsersManagement() {
               }}
               className="space-y-4"
             >
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Username</Label>
-                  <Input
-                    value={newUser.username}
-                    onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
-                    placeholder="usuario"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Nome Completo</Label>
-                  <Input
-                    value={newUser.full_name}
-                    onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })}
-                    placeholder="Nome Completo"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label>Nome Completo</Label>
+                <Input
+                  value={newUser.full_name}
+                  onChange={(e) => {
+                    const name = e.target.value;
+                    const generatedUsername = name
+                      .normalize("NFD")
+                      .replace(/[\u0300-\u036f]/g, "")
+                      .replace(/\s+/g, "")
+                      .toLowerCase();
+                    setNewUser({ ...newUser, full_name: name, username: generatedUsername });
+                  }}
+                  placeholder="Nome Completo"
+                  required
+                />
               </div>
               <div className="space-y-2">
-                <Label>Email (opcional)</Label>
+                <Label>Email</Label>
                 <Input
                   type="email"
                   value={newUser.email}
                   onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                   placeholder="usuario@email.com"
+                  required
                 />
-                <p className="text-[10px] text-muted-foreground">Se vazio, será usado username@admin.com</p>
               </div>
               <div className="space-y-2">
                 <Label>Senha</Label>
@@ -197,10 +195,10 @@ export default function UsersManagement() {
                   <div className="space-y-2">
                     <Label>Vendedor (Gigatech)</Label>
                     <Select 
-                      value={newUser.nome_vendedor} 
+                      value={newUser.nome_vendedor ? `${newUser.nome_vendedor}::${newUser.loja}` : ""} 
                       onValueChange={(v) => {
-                        const sInfo = sellersInfo?.find(s => s.nome_vendedor === v);
-                        setNewUser({ ...newUser, nome_vendedor: v, loja: sInfo?.loja || "" });
+                        const [nv, lj] = v.split("::");
+                        setNewUser({ ...newUser, nome_vendedor: nv, loja: lj === "null" ? "" : lj || "" });
                       }}
                     >
                       <SelectTrigger>
@@ -208,7 +206,7 @@ export default function UsersManagement() {
                       </SelectTrigger>
                       <SelectContent>
                         {sellersInfo?.map((s) => (
-                          <SelectItem key={`${s.nome_vendedor}-${s.loja}`} value={s.nome_vendedor}>
+                          <SelectItem key={`${s.nome_vendedor}-${s.loja}`} value={`${s.nome_vendedor}::${s.loja || "null"}`}>
                             {s.nome_vendedor} {s.loja ? `(${s.loja})` : ""}
                           </SelectItem>
                         ))}
