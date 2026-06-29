@@ -17,7 +17,7 @@ export default function Welcome() {
   useEffect(() => {
     if (!authLoading && !session) navigate("/login");
     else if (!authLoading && session && isSeller && profileData?.nome_vendedor) {
-      navigate(`/vendedor/${encodeURIComponent(profileData.nome_vendedor)}`, { replace: true });
+      navigate(`/vendedor/${encodeURIComponent(profileData.nome_vendedor)}?store=${profileData.loja || 'sobral'}`, { replace: true });
     }
   }, [authLoading, session, navigate, isSeller, profileData]);
 

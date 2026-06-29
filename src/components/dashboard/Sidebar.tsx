@@ -70,7 +70,7 @@ export default function Sidebar() {
               icon={BarChart3}
               label="Minhas Vendas"
               isActive={location.pathname === sellerPath}
-              onClick={() => navigate(sellerPath)}
+              onClick={() => navigate(`${sellerPath}?store=${profileData?.loja || 'sobral'}`)}
             />
           )
         ) : (

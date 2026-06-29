@@ -188,13 +188,13 @@ export default function PermissionsManagement() {
                         <td className="px-4 py-3">
                           {isSeller ? (
                             <Select 
-                              value={p.nome_vendedor || "none"} 
+                              value={p.nome_vendedor ? `${p.nome_vendedor}::${p.loja || "null"}` : "none"} 
                               onValueChange={(v) => {
                                 if (v === "none") {
                                   updateProfileSeller.mutate({ userId: p.id, nome_vendedor: null, loja: null });
                                 } else {
-                                  const sInfo = sellersInfo?.find(s => s.nome_vendedor === v);
-                                  updateProfileSeller.mutate({ userId: p.id, nome_vendedor: v, loja: sInfo?.loja || null });
+                                  const [nv, lj] = v.split("::");
+                                  updateProfileSeller.mutate({ userId: p.id, nome_vendedor: nv, loja: lj === "null" ? null : lj || null });
                                 }
                               }}
                             >
@@ -204,7 +204,7 @@ export default function PermissionsManagement() {
                               <SelectContent>
                                 <SelectItem value="none">Sem vínculo</SelectItem>
                                 {sellersInfo?.map((s) => (
-                                  <SelectItem key={`${s.nome_vendedor}-${s.loja}`} value={s.nome_vendedor}>
+                                  <SelectItem key={`${s.nome_vendedor}-${s.loja}`} value={`${s.nome_vendedor}::${s.loja || "null"}`}>
                                     {s.nome_vendedor} {s.loja ? `(${s.loja})` : ""}
                                   </SelectItem>
                                 ))}

@@ -154,7 +154,7 @@ export default function Index({ store = "sobral" }: IndexProps) {
   useEffect(() => {
     if (!authLoading && !session) { navigate("/login"); return; }
     if (!authLoading && session && isSeller && profileData?.nome_vendedor) {
-      navigate(`/vendedor/${encodeURIComponent(profileData.nome_vendedor)}`, { replace: true });
+      navigate(`/vendedor/${encodeURIComponent(profileData.nome_vendedor)}?store=${profileData.loja || 'sobral'}`, { replace: true });
       return;
     }
     if (!authLoading && !accessLoading && session && !hasStoreAccess(store as any)) navigate("/welcome");
