@@ -5,7 +5,7 @@ const ALLOWED_ORIGIN_PATTERNS = [
   /\.vercel\.app$/,
   /\.scoreconsultoria\.com\.br$/,
   /^https:\/\/lunsyufvxkiivnrhpxpj\.supabase\.co$/,
-  /^http:\/\/localhost:(8080|5173)$/,
+  /^http:\/\/localhost:\d+$/,
 ];
 
 function getCorsHeaders(req: Request) {
