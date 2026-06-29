@@ -57,7 +57,7 @@ serve(async (req: Request) => {
     const { data: newUserData, error: createError } = await adminClient.auth.admin.createUser({
       email: resolvedEmail,
       password,
-      user_metadata: { username, full_name },
+      user_metadata: { username, full_name, system: "marialima" },
       email_confirm: true,
     });
 
