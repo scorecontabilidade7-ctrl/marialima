@@ -10,12 +10,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { toast } from "sonner";
 import { Plus, Shield, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useVendedoresInfo } from "@/hooks/useVendedoresConfig";
 
 interface Profile {
   id: string;
   username: string;
   full_name: string;
   avatar_url: string | null;
+  nome_vendedor?: string | null;
+  loja?: string | null;
 }
 
 interface UserRole {
@@ -40,7 +43,8 @@ export default function UsersManagement() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [openNew, setOpenNew] = useState(false);
-  const [newUser, setNewUser] = useState({ username: "", email: "", password: "", full_name: "", role: "seller" });
+  const [newUser, setNewUser] = useState({ username: "", email: "", password: "", full_name: "", role: "seller", nome_vendedor: "", loja: "" });
+  const { data: sellersInfo } = useVendedoresInfo();
 
   const { data: profiles, isLoading } = useQuery({
     queryKey: ["admin-profiles"],
@@ -74,12 +78,25 @@ export default function UsersManagement() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      
+      // Update profile with seller info if role is seller
+      if (newUser.role === "seller" && newUser.nome_vendedor) {
+        const { error: profileError } = await (supabase as any)
+          .from("marialima_profiles")
+          .update({
+            nome_vendedor: newUser.nome_vendedor,
+            loja: newUser.loja || null,
+          })
+          .eq("id", data.user.id);
+        if (profileError) console.error("Error linking seller to profile:", profileError);
+      }
+      
       return data.user;
     },
     onSuccess: () => {
       toast.success("Usuário criado com sucesso!");
       setOpenNew(false);
-      setNewUser({ username: "", email: "", password: "", full_name: "", role: "seller" });
+      setNewUser({ username: "", email: "", password: "", full_name: "", role: "seller", nome_vendedor: "", loja: "" });
       qc.invalidateQueries({ queryKey: ["admin-profiles"] });
       qc.invalidateQueries({ queryKey: ["admin-roles"] });
     },
@@ -174,6 +191,36 @@ export default function UsersManagement() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {newUser.role === "seller" && (
+                <div className="grid grid-cols-2 gap-4 border border-border/60 p-4 rounded-lg bg-secondary/20">
+                  <div className="space-y-2">
+                    <Label>Vendedor (Gigatech)</Label>
+                    <Select 
+                      value={newUser.nome_vendedor} 
+                      onValueChange={(v) => {
+                        const sInfo = sellersInfo?.find(s => s.nome_vendedor === v);
+                        setNewUser({ ...newUser, nome_vendedor: v, loja: sInfo?.loja || "" });
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sellersInfo?.map((s) => (
+                          <SelectItem key={`${s.nome_vendedor}-${s.loja}`} value={s.nome_vendedor}>
+                            {s.nome_vendedor} {s.loja ? `(${s.loja})` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Loja</Label>
+                    <Input value={newUser.loja} disabled placeholder="Preenchimento automático" />
+                  </div>
+                </div>
+              )}
               <Button type="submit" className="w-full" disabled={createUser.isPending}>
                 {createUser.isPending ? "Criando..." : "Criar Usuário"}
               </Button>
@@ -204,7 +251,14 @@ export default function UsersManagement() {
                 ) : (
                   profiles.map((p) => (
                     <tr key={p.id} className="border-b border-border/30 hover:bg-muted/30">
-                      <td className="px-4 py-2.5 font-medium">{p.username}</td>
+                      <td className="px-4 py-2.5 font-medium">
+                        {p.username}
+                        {p.nome_vendedor && (
+                          <span className="block text-[10px] text-muted-foreground font-normal">
+                            Vínculo: {p.nome_vendedor} {p.loja ? `(${p.loja})` : ''}
+                          </span>
+                        )}
+                      </td>
                       <td className="px-4 py-2.5">{p.full_name || "—"}</td>
                       <td className="px-4 py-2.5">
                         <div className="flex gap-1.5">

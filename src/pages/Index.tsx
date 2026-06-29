@@ -110,7 +110,7 @@ export default function Index({ store = "sobral" }: IndexProps) {
   const maxExtracaoDate = maxExtracao ? new Date(maxExtracao) : null;
 
   const { session, loading: authLoading } = useAuth();
-  const { hasStoreAccess, loading: accessLoading } = useUserAccess();
+  const { hasStoreAccess, loading: accessLoading, isSeller, profileData } = useUserAccess();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const activeView = searchParams.get("view") || "cockpit";
@@ -153,8 +153,12 @@ export default function Index({ store = "sobral" }: IndexProps) {
 
   useEffect(() => {
     if (!authLoading && !session) { navigate("/login"); return; }
+    if (!authLoading && session && isSeller && profileData?.nome_vendedor) {
+      navigate(`/vendedor/${encodeURIComponent(profileData.nome_vendedor)}`, { replace: true });
+      return;
+    }
     if (!authLoading && !accessLoading && session && !hasStoreAccess(store as any)) navigate("/welcome");
-  }, [authLoading, accessLoading, session, store, hasStoreAccess, navigate]);
+  }, [authLoading, accessLoading, session, store, hasStoreAccess, navigate, isSeller, profileData]);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));

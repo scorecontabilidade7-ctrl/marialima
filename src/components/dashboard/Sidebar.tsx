@@ -46,7 +46,7 @@ function TooltipItem({
 
 export default function Sidebar() {
   const { session, signOut } = useAuth();
-  const { isAdmin } = useUserAccess();
+  const { isAdmin, isSeller, profileData } = useUserAccess();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -55,6 +55,7 @@ export default function Sidebar() {
   const isDashboard = location.pathname === "/" || location.pathname === "/itapipoca";
   const view = searchParams.get("view") || "cockpit";
   const targetPath = isDashboard ? location.pathname : "/";
+  const sellerPath = isSeller && profileData?.nome_vendedor ? `/vendedor/${encodeURIComponent(profileData.nome_vendedor)}` : null;
 
   return (
     <aside className="w-14 h-screen sticky top-0 bg-sidebar flex flex-col border-r border-sidebar-border shrink-0 z-50">
@@ -63,18 +64,31 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 flex flex-col items-center py-3 gap-0.5">
-        <TooltipItem
-          icon={BarChart3}
-          label="Cockpit"
-          isActive={isDashboard && view === "cockpit"}
-          onClick={() => navigate(`${targetPath}?view=cockpit`)}
-        />
-        <TooltipItem
-          icon={Target}
-          label="Metas"
-          isActive={isDashboard && view === "metas"}
-          onClick={() => navigate(`${targetPath}?view=metas`)}
-        />
+        {isSeller ? (
+          sellerPath && (
+            <TooltipItem
+              icon={BarChart3}
+              label="Minhas Vendas"
+              isActive={location.pathname === sellerPath}
+              onClick={() => navigate(sellerPath)}
+            />
+          )
+        ) : (
+          <>
+            <TooltipItem
+              icon={BarChart3}
+              label="Cockpit"
+              isActive={isDashboard && view === "cockpit"}
+              onClick={() => navigate(`${targetPath}?view=cockpit`)}
+            />
+            <TooltipItem
+              icon={Target}
+              label="Metas"
+              isActive={isDashboard && view === "metas"}
+              onClick={() => navigate(`${targetPath}?view=metas`)}
+            />
+          </>
+        )}
         {isAdmin && (
           <TooltipItem
             icon={Settings}

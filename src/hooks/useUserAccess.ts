@@ -31,6 +31,23 @@ export function useUserAccess() {
   });
 
   const isAdmin = roles?.includes("admin") ?? false;
+  const isSeller = roles?.length === 1 && roles.includes("seller");
+
+  const { data: profileData, isLoading: profileLoading } = useQuery({
+    queryKey: ["user-profile", userId],
+    queryFn: async () => {
+      if (!userId) return null;
+      const { data, error } = await (supabase as any)
+        .from("marialima_profiles")
+        .select("nome_vendedor, loja")
+        .eq("id", userId)
+        .single();
+      if (error) return null;
+      return data as { nome_vendedor: string | null; loja: string | null };
+    },
+    enabled: !!userId,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const { data: storeRows, isLoading: storesLoading } = useQuery({
     queryKey: ["user-stores", userId],
@@ -49,10 +66,12 @@ export function useUserAccess() {
 
   const accessibleStores: Store[] = isAdmin ? ALL_STORES : (storeRows ?? ALL_STORES);
 
-  const loading = authLoading || rolesLoading || (!isAdmin && storesLoading);
+  const loading = authLoading || rolesLoading || profileLoading || (!isAdmin && storesLoading);
 
   return {
     isAdmin,
+    isSeller,
+    profileData,
     accessibleStores,
     hasStoreAccess: (store: Store) => isAdmin || accessibleStores.includes(store),
     loading,

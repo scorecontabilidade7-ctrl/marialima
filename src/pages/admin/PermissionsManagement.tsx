@@ -9,9 +9,11 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ALL_STORES, STORE_LABELS, type Store as StoreType } from "@/hooks/useUserAccess";
 
+import { useVendedoresInfo } from "@/hooks/useVendedoresConfig";
+
 type Role = "admin" | "manager" | "seller";
 
-interface Profile { id: string; username: string; full_name: string; }
+interface Profile { id: string; username: string; full_name: string; nome_vendedor?: string | null; loja?: string | null; }
 interface UserRole { id: string; user_id: string; role: Role; }
 interface UserStore { id: string; user_id: string; store: StoreType; }
 
@@ -31,11 +33,13 @@ export default function PermissionsManagement() {
   const { data: profiles, isLoading } = useQuery({
     queryKey: ["admin-profiles"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).from("marialima_profiles").select("id, username, full_name");
+      const { data, error } = await (supabase as any).from("marialima_profiles").select("id, username, full_name, nome_vendedor, loja");
       if (error) throw error;
       return data as Profile[];
     },
   });
+
+  const { data: sellersInfo } = useVendedoresInfo();
 
   const { data: roles } = useQuery({
     queryKey: ["admin-roles"],
@@ -106,6 +110,21 @@ export default function PermissionsManagement() {
     onError: (err: any) => toast.error("Erro ao remover acesso", { description: err.message }),
   });
 
+  const updateProfileSeller = useMutation({
+    mutationFn: async ({ userId, nome_vendedor, loja }: { userId: string; nome_vendedor: string | null; loja: string | null }) => {
+      const { error } = await (supabase as any)
+        .from("marialima_profiles")
+        .update({ nome_vendedor, loja })
+        .eq("id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Vendedor vinculado atualizado");
+      qc.invalidateQueries({ queryKey: ["admin-profiles"] });
+    },
+    onError: (err: any) => toast.error("Erro ao atualizar vínculo", { description: err.message }),
+  });
+
   const getUserRoles = (uid: string) => roles?.filter((r) => r.user_id === uid) ?? [];
   const isUserAdmin  = (uid: string) => getUserRoles(uid).some((r) => r.role === "admin");
   const availableRoles = (uid: string) => ROLES.filter((r) => !getUserRoles(uid).map((x) => x.role).includes(r));
@@ -136,6 +155,7 @@ export default function PermissionsManagement() {
               <thead>
                 <tr className="bg-sidebar text-sidebar-foreground">
                   <th className="text-left px-4 py-2.5 font-medium">Usuário</th>
+                  <th className="text-left px-4 py-2.5 font-medium">Vínculo Vendedor</th>
                   <th className="text-left px-4 py-2.5 font-medium">Papéis</th>
                   <th className="text-left px-4 py-2.5 font-medium">Adicionar papel</th>
                   {ALL_STORES.map((s) => (
@@ -154,6 +174,7 @@ export default function PermissionsManagement() {
                     const available   = availableRoles(p.id);
                     const selectedRole = addingRole[p.id];
                     const admin       = isUserAdmin(p.id);
+                    const isSeller    = userRoles.some(r => r.role === "seller");
 
                     return (
                       <tr key={p.id} className="border-b border-border/30 hover:bg-muted/30">
@@ -161,6 +182,37 @@ export default function PermissionsManagement() {
                         <td className="px-4 py-3">
                           <div className="font-medium">{p.username}</div>
                           {p.full_name && <div className="text-xs text-muted-foreground">{p.full_name}</div>}
+                        </td>
+
+                        {/* Vínculo Vendedor */}
+                        <td className="px-4 py-3">
+                          {isSeller ? (
+                            <Select 
+                              value={p.nome_vendedor || "none"} 
+                              onValueChange={(v) => {
+                                if (v === "none") {
+                                  updateProfileSeller.mutate({ userId: p.id, nome_vendedor: null, loja: null });
+                                } else {
+                                  const sInfo = sellersInfo?.find(s => s.nome_vendedor === v);
+                                  updateProfileSeller.mutate({ userId: p.id, nome_vendedor: v, loja: sInfo?.loja || null });
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="h-7 w-[160px] text-xs">
+                                <SelectValue placeholder="Sem vínculo" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Sem vínculo</SelectItem>
+                                {sellersInfo?.map((s) => (
+                                  <SelectItem key={`${s.nome_vendedor}-${s.loja}`} value={s.nome_vendedor}>
+                                    {s.nome_vendedor} {s.loja ? `(${s.loja})` : ""}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
                         </td>
 
                         {/* Papéis */}

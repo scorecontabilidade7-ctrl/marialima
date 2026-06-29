@@ -1,9 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useRawSalesData, useSalesData } from "@/hooks/useSalesData";
 import { useCurrentMonthGoals } from "@/hooks/useMonthlyGoals";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, TrendingUp, ShoppingBag, Users, Award, DollarSign, RefreshCw } from "lucide-react";
+import { ArrowLeft, TrendingUp, ShoppingBag, Users, Award, DollarSign, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { BR_TIME_ZONE, getDatePartsInTimeZone } from "@/lib/utils";
 import { calculateSingleDynamicCommission } from "@/hooks/useDynamicCommissions";
 import {
@@ -30,6 +30,7 @@ function formatMobileLabel(value: number) {
 }
 
 import { useVendedoresConfig } from "@/hooks/useVendedoresConfig";
+import { useUserAccess } from "@/hooks/useUserAccess";
 
 export default function SellerProfile() {
   const { name } = useParams<{ name: string }>();
@@ -39,6 +40,7 @@ export default function SellerProfile() {
   const sellerName = decodeURIComponent(name || "");
   const { data, isLoading } = useRawSalesData(store, sellerName);
   const { data: configs } = useVendedoresConfig();
+  const { isSeller } = useUserAccess();
 
   const photo = configs?.find((c) => c.nome_vendedor === sellerName)?.url_foto;
   const firstName = sellerName.split(" ")[0];
@@ -63,12 +65,29 @@ export default function SellerProfile() {
   const now = new Date();
   const { year: realYear, month: realMonth } = getDatePartsInTimeZone(now, BR_TIME_ZONE);
   
-  const yearParam = searchParams.get("year");
-  const monthParam = searchParams.get("month");
-  const currentYear = yearParam ? parseInt(yearParam, 10) : realYear;
-  const currentMonth = monthParam ? parseInt(monthParam, 10) : realMonth;
+  const [selectedMonth, setSelectedMonth] = useState({
+    year: searchParams.get("year") ? parseInt(searchParams.get("year")!, 10) : realYear,
+    month: searchParams.get("month") ? parseInt(searchParams.get("month")!, 10) : realMonth
+  });
+
+  const currentYear = selectedMonth.year;
+  const currentMonth = selectedMonth.month;
   const targetYearMonth = `${currentYear}-${String(currentMonth).padStart(2, "0")}`;
   const selectedMonthLabel = `${MONTH_NAMES[currentMonth - 1]} de ${currentYear}`;
+  const isCurrentMonth = currentYear === realYear && currentMonth === realMonth;
+
+  const goToPrevMonth = () => {
+    setSelectedMonth((prev) => {
+      if (prev.month === 1) return { year: prev.year - 1, month: 12 };
+      return { year: prev.year, month: prev.month - 1 };
+    });
+  };
+  const goToNextMonth = () => {
+    setSelectedMonth((prev) => {
+      if (prev.month === 12) return { year: prev.year + 1, month: 1 };
+      return { year: prev.year, month: prev.month + 1 };
+    });
+  };
 
   const { data: goalData } = useCurrentMonthGoals(store, targetYearMonth);
   
@@ -203,15 +222,41 @@ export default function SellerProfile() {
   return (
     <div className="h-full overflow-y-auto bg-background">
       {/* Top bar */}
-      <header className="border-b border-border/60 bg-card px-6 py-2 flex items-center justify-between sticky top-0 z-10">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Voltar
-        </button>
-        <img src="/logo.png" alt="Maria Lima" className="h-8 w-auto object-contain" />
+      <header className="border-b border-border/60 bg-card px-6 py-2 flex items-center justify-between sticky top-0 z-10 gap-2">
+        {!isSeller ? (
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">Voltar</span>
+          </button>
+        ) : (
+          <div className="w-8 sm:w-16 shrink-0" />
+        )}
+        
+        <div className="flex flex-1 justify-center">
+          <div className="flex items-center gap-1 h-9 border border-border rounded-md bg-secondary px-1">
+            <button
+              onClick={goToPrevMonth}
+              className="p-1 rounded hover:bg-accent transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+            </button>
+            <span className="text-sm font-medium w-24 sm:w-32 text-center capitalize tabular-nums select-none truncate">
+              {selectedMonthLabel}
+            </span>
+            <button
+              onClick={goToNextMonth}
+              disabled={isCurrentMonth}
+              className="p-1 rounded hover:bg-accent transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
+        </div>
+
+        <img src="/logo.png" alt="Maria Lima" className="h-8 w-auto object-contain shrink-0" />
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-6 space-y-6">

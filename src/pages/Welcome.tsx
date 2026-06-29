@@ -11,12 +11,15 @@ const STORE_ROUTES: Record<Store, string> = {
 
 export default function Welcome() {
   const { session, loading: authLoading } = useAuth();
-  const { accessibleStores, loading: accessLoading } = useUserAccess();
+  const { accessibleStores, loading: accessLoading, isSeller, profileData } = useUserAccess();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!authLoading && !session) navigate("/login");
-  }, [authLoading, session, navigate]);
+    else if (!authLoading && session && isSeller && profileData?.nome_vendedor) {
+      navigate(`/vendedor/${encodeURIComponent(profileData.nome_vendedor)}`, { replace: true });
+    }
+  }, [authLoading, session, navigate, isSeller, profileData]);
 
   if (authLoading || accessLoading) return null;
 
