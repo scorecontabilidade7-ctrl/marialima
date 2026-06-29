@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { Plus, Shield, ArrowLeft } from "lucide-react";
+import { Plus, Shield, ArrowLeft, MoreHorizontal, Edit, PowerOff, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useVendedoresInfo } from "@/hooks/useVendedoresConfig";
 
@@ -18,7 +19,10 @@ interface Profile {
   full_name: string;
   avatar_url: string | null;
   nome_vendedor?: string | null;
+  avatar_url: string | null;
+  nome_vendedor?: string | null;
   loja?: string | null;
+  active?: boolean;
 }
 
 interface UserRole {
@@ -43,7 +47,9 @@ export default function UsersManagement() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [openNew, setOpenNew] = useState(false);
+  const [openEdit, setOpenEdit] = useState(false);
   const [newUser, setNewUser] = useState({ username: "", email: "", password: "", full_name: "", role: "seller", nome_vendedor: "", loja: "" });
+  const [editingUser, setEditingUser] = useState<{ id: string; email: string; password: string; full_name: string; role: string; nome_vendedor: string; loja: string; active: boolean } | null>(null);
   const { data: sellersInfo } = useVendedoresInfo();
 
   const { data: profiles, isLoading } = useQuery({
@@ -104,6 +110,76 @@ export default function UsersManagement() {
       toast.error("Erro ao criar usuário", { description: err.message });
     },
   });
+
+  const updateUser = useMutation({
+    mutationFn: async (vars: { id: string; email?: string; password?: string; full_name?: string; role?: string; active?: boolean }) => {
+      const { data, error } = await supabase.functions.invoke("admin-update-user", {
+        body: {
+          userId: vars.id,
+          email: vars.email || undefined,
+          password: vars.password || undefined,
+          full_name: vars.full_name,
+          role: vars.role,
+          active: vars.active,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      // Update profile with seller info if role is seller
+      if (editingUser && vars.role) {
+        if (vars.role === "seller" && editingUser.nome_vendedor) {
+          const { error: profileError } = await (supabase as any)
+            .from("marialima_profiles")
+            .update({
+              nome_vendedor: editingUser.nome_vendedor,
+              loja: editingUser.loja || null,
+            })
+            .eq("id", vars.id);
+          if (profileError) console.error("Error linking seller to profile:", profileError);
+        } else if (vars.role !== "seller") {
+          const { error: profileError } = await (supabase as any)
+            .from("marialima_profiles")
+            .update({
+              nome_vendedor: null,
+              loja: null,
+            })
+            .eq("id", vars.id);
+        }
+      }
+
+      return data.user;
+    },
+    onSuccess: () => {
+      toast.success("Usuário atualizado com sucesso!");
+      setOpenEdit(false);
+      setEditingUser(null);
+      qc.invalidateQueries({ queryKey: ["admin-profiles"] });
+      qc.invalidateQueries({ queryKey: ["admin-roles"] });
+    },
+    onError: (err: any) => {
+      toast.error("Erro ao atualizar usuário", { description: err.message });
+    },
+  });
+
+  const handleEditClick = (p: Profile) => {
+    const r = getUserRoles(p.id)[0]?.role || "seller";
+    setEditingUser({
+      id: p.id,
+      email: "",
+      password: "",
+      full_name: p.full_name || "",
+      role: r,
+      nome_vendedor: p.nome_vendedor || "",
+      loja: p.loja || "",
+      active: p.active !== false
+    });
+    setOpenEdit(true);
+  };
+
+  const handleToggleActive = (p: Profile) => {
+    updateUser.mutate({ id: p.id, active: p.active === false ? true : false });
+  };
 
   const getUserRoles = (userId: string) => {
     return roles?.filter((r) => r.user_id === userId) || [];
@@ -225,6 +301,104 @@ export default function UsersManagement() {
             </form>
           </DialogContent>
         </Dialog>
+
+        <Dialog open={openEdit} onOpenChange={setOpenEdit}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Usuário</DialogTitle>
+            </DialogHeader>
+            {editingUser && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  updateUser.mutate({
+                    id: editingUser.id,
+                    email: editingUser.email,
+                    password: editingUser.password,
+                    full_name: editingUser.full_name,
+                    role: editingUser.role,
+                    active: editingUser.active
+                  });
+                }}
+                className="space-y-4"
+              >
+                <div className="space-y-2">
+                  <Label>Nome Completo</Label>
+                  <Input
+                    value={editingUser.full_name}
+                    onChange={(e) => setEditingUser({ ...editingUser, full_name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Novo Email (deixe em branco para não alterar)</Label>
+                  <Input
+                    type="email"
+                    value={editingUser.email}
+                    onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                    placeholder="usuario@email.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Nova Senha (deixe em branco para não alterar)</Label>
+                  <Input
+                    type="password"
+                    value={editingUser.password}
+                    onChange={(e) => setEditingUser({ ...editingUser, password: e.target.value })}
+                    placeholder="••••••••"
+                    minLength={6}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Função</Label>
+                  <Select value={editingUser.role} onValueChange={(v) => setEditingUser({ ...editingUser, role: v })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="manager">Gerente</SelectItem>
+                      <SelectItem value="seller">Vendedor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {editingUser.role === "seller" && (
+                  <div className="grid grid-cols-2 gap-4 border border-border/60 p-4 rounded-lg bg-secondary/20">
+                    <div className="space-y-2">
+                      <Label>Vendedor (Gigatech)</Label>
+                      <Select 
+                        value={editingUser.nome_vendedor ? `${editingUser.nome_vendedor}::${editingUser.loja}` : ""} 
+                        onValueChange={(v) => {
+                          const [nv, lj] = v.split("::");
+                          setEditingUser({ ...editingUser, nome_vendedor: nv, loja: lj === "null" ? "" : lj || "" });
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {sellersInfo?.map((s) => (
+                            <SelectItem key={`${s.nome_vendedor}-${s.loja}`} value={`${s.nome_vendedor}::${s.loja || "null"}`}>
+                              {s.nome_vendedor} {s.loja ? `(${s.loja})` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Loja</Label>
+                      <Input value={editingUser.loja} disabled placeholder="Preenchimento automático" />
+                    </div>
+                  </div>
+                )}
+                <Button type="submit" className="w-full" disabled={updateUser.isPending}>
+                  {updateUser.isPending ? "Salvando..." : "Salvar Alterações"}
+                </Button>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Card className="border border-border/60 w-full overflow-hidden">
@@ -239,6 +413,8 @@ export default function UsersManagement() {
                   <th className="text-left px-4 py-2.5 font-medium">Usuário</th>
                   <th className="text-left px-4 py-2.5 font-medium">Nome</th>
                   <th className="text-left px-4 py-2.5 font-medium">Funções</th>
+                  <th className="text-left px-4 py-2.5 font-medium">Status</th>
+                  <th className="text-right px-4 py-2.5 font-medium">Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -273,6 +449,38 @@ export default function UsersManagement() {
                             <span className="text-muted-foreground text-xs">Sem função</span>
                           )}
                         </div>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {p.active === false ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-destructive/10 text-destructive">
+                            Inativo
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700">
+                            Ativo
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditClick(p)}>
+                              <Edit className="w-4 h-4 mr-2" /> Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleToggleActive(p)} className={p.active === false ? "text-emerald-600" : "text-destructive"}>
+                              {p.active === false ? (
+                                <><CheckCircle className="w-4 h-4 mr-2" /> Ativar</>
+                              ) : (
+                                <><PowerOff className="w-4 h-4 mr-2" /> Inativar</>
+                              )}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </td>
                     </tr>
                   ))
