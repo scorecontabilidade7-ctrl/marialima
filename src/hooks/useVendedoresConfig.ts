@@ -5,6 +5,7 @@ export interface VendedorConfig {
   id: string;
   nome_vendedor: string;
   url_foto: string | null;
+  loja: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -24,13 +25,13 @@ export function useVendedoresConfig() {
   });
 }
 
-export function useDistinctVendedores() {
+export function useVendedoresInfo() {
   return useQuery({
-    queryKey: ["distinctVendedores"],
+    queryKey: ["vendedoresInfo"],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("marialima_get_distinct_vendedores");
+      const { data, error } = await supabase.rpc("marialima_get_vendedores_info");
       if (error) throw error;
-      return data as string[];
+      return data as { nome_vendedor: string; loja: string }[];
     },
   });
 }
@@ -39,13 +40,14 @@ export function useUpsertVendedorConfig() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (config: { id?: string; nome_vendedor: string; url_foto: string | null }) => {
+    mutationFn: async (config: { id?: string; nome_vendedor: string; url_foto: string | null; loja?: string | null }) => {
       if (config.id) {
         const { data, error } = await supabase
           .from("marialima_vendedores_config")
           .update({
             nome_vendedor: config.nome_vendedor,
             url_foto: config.url_foto,
+            loja: config.loja,
             updated_at: new Date().toISOString()
           })
           .eq("id", config.id)
@@ -58,7 +60,8 @@ export function useUpsertVendedorConfig() {
           .from("marialima_vendedores_config")
           .insert({
             nome_vendedor: config.nome_vendedor,
-            url_foto: config.url_foto
+            url_foto: config.url_foto,
+            loja: config.loja
           })
           .select()
           .single();

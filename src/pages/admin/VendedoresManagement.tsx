@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useVendedoresConfig, useDistinctVendedores, useUpsertVendedorConfig, uploadSellerPhoto } from "@/hooks/useVendedoresConfig";
+import { useVendedoresConfig, useVendedoresInfo, useUpsertVendedorConfig, uploadSellerPhoto } from "@/hooks/useVendedoresConfig";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,29 +18,30 @@ function getInitials(name: string) {
 export default function VendedoresManagement() {
   const navigate = useNavigate();
   const { data: configs, isLoading } = useVendedoresConfig();
-  const { data: distinctSellers, isLoading: isLoadingSellers } = useDistinctVendedores();
+  const { data: distinctSellers, isLoading: isLoadingSellers } = useVendedoresInfo();
   const { mutateAsync: upsertConfig } = useUpsertVendedorConfig();
   
   const [isOpen, setIsOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   
-  const [formData, setFormData] = useState<{ id?: string; nome_vendedor: string; url_foto: string | null }>({
+  const [formData, setFormData] = useState<{ id?: string; nome_vendedor: string; url_foto: string | null; loja?: string | null }>({
     nome_vendedor: "",
     url_foto: null,
+    loja: null,
   });
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  const openEdit = (config: { id: string; nome_vendedor: string; url_foto: string | null }) => {
-    setFormData({ id: config.id, nome_vendedor: config.nome_vendedor, url_foto: config.url_foto });
+  const openEdit = (config: { id: string; nome_vendedor: string; url_foto: string | null; loja?: string | null }) => {
+    setFormData({ id: config.id, nome_vendedor: config.nome_vendedor, url_foto: config.url_foto, loja: config.loja });
     setSelectedFile(null);
     setPreviewUrl(config.url_foto);
     setIsOpen(true);
   };
 
   const openCreate = () => {
-    setFormData({ nome_vendedor: "", url_foto: null });
+    setFormData({ nome_vendedor: "", url_foto: null, loja: null });
     setSelectedFile(null);
     setPreviewUrl(null);
     setIsOpen(true);
@@ -72,6 +73,7 @@ export default function VendedoresManagement() {
         id: formData.id,
         nome_vendedor: formData.nome_vendedor,
         url_foto: photoUrl,
+        loja: formData.loja,
       });
 
       toast.success("Configuração salva com sucesso!");
@@ -119,7 +121,10 @@ export default function VendedoresManagement() {
                 <Label>Vendedor (Gigatech)</Label>
                 <Select
                   value={formData.nome_vendedor}
-                  onValueChange={(val) => setFormData({ ...formData, nome_vendedor: val })}
+                  onValueChange={(val) => {
+                    const sellerInfo = distinctSellers?.find(s => s.nome_vendedor === val);
+                    setFormData({ ...formData, nome_vendedor: val, loja: sellerInfo?.loja || null });
+                  }}
                   disabled={!!formData.id || isLoadingSellers}
                 >
                   <SelectTrigger>
@@ -127,13 +132,18 @@ export default function VendedoresManagement() {
                   </SelectTrigger>
                   <SelectContent>
                     {distinctSellers?.map((seller) => (
-                      <SelectItem key={seller} value={seller}>
-                        {seller}
+                      <SelectItem key={seller.nome_vendedor} value={seller.nome_vendedor}>
+                        {seller.nome_vendedor}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 {formData.id && <p className="text-xs text-muted-foreground">Não é possível alterar o nome de um vendedor já vinculado.</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Loja</Label>
+                <Input value={formData.loja || ""} disabled placeholder="Loja será preenchida automaticamente" />
               </div>
 
               <div className="space-y-2">
@@ -193,6 +203,9 @@ export default function VendedoresManagement() {
                   )}
                 </div>
                 <h3 className="font-semibold text-lg leading-tight mb-1">{config.nome_vendedor}</h3>
+                {config.loja && (
+                  <span className="text-sm text-muted-foreground mb-2 capitalize">{config.loja}</span>
+                )}
                 <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
                   Vendedor
                 </span>

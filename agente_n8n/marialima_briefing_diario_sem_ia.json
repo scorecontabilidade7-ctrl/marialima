@@ -1,0 +1,137 @@
+{
+  "meta": {
+    "instanceId": "local"
+  },
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "manual-trigger",
+      "name": "Manual Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n    loja,\n    nome_vendedor,\n    valor_total_vendido,\n    quantidade_vendas,\n    meta_top1_diaria\nFROM marialima_vw_ai_performance_diaria\nWHERE data_venda = current_date - interval '1 day'\nORDER BY loja, valor_total_vendido DESC;"
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        200,
+        -100
+      ],
+      "id": "postgres-yesterday",
+      "name": "Postgres Yesterday",
+      "credentials": {
+        "postgres": {
+          "id": "",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n    loja,\n    nome_vendedor,\n    valor_total_vendido,\n    quantidade_vendas,\n    meta_minima_individual AS meta_minima,\n    meta_top1_individual AS meta_top1,\n    meta_top2_individual AS meta_top2,\n    meta_master_individual AS meta_master\nFROM marialima_vw_ai_performance_mensal\nWHERE year_month = to_char(current_date, 'YYYY-MM')\nORDER BY loja, valor_total_vendido DESC;"
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        200,
+        100
+      ],
+      "id": "postgres-month",
+      "name": "Postgres Month",
+      "credentials": {
+        "postgres": {
+          "id": "",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "append"
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        450,
+        0
+      ],
+      "id": "merge-node",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "const yesterdayData = $items('Postgres Yesterday');\nconst monthData = $items('Postgres Month');\n\nconst formatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });\n\nconst yesterday = new Date();\nyesterday.setDate(yesterday.getDate() - 1);\nconst formattedDate = yesterday.toLocaleDateString('pt-BR');\n\nlet msg = `*📊 BRIEFING DIÁRIO - ${formattedDate}*\\n_Dados consolidados das operações_\\n\\n`;\n\nconst lojas = ['Sobral', 'Itapipoca'];\n\nfor (const l of lojas) {\n    // Filter rows by store\n    const yRows = yesterdayData.filter(i => i.json.loja && i.json.loja.toLowerCase() === l.toLowerCase()).map(i => i.json);\n    const mRows = monthData.filter(i => i.json.loja && i.json.loja.toLowerCase() === l.toLowerCase()).map(i => i.json);\n\n    msg += `🏢 *LOJA ${l.toUpperCase()}*\\n`;\n    \n    // YESTERDAY AGGREGATION\n    if (yRows.length > 0) {\n        let totalY = 0, volY = 0;\n        let metaTop1Y = 0;\n        for (const row of yRows) {\n            totalY += parseFloat(row.valor_total_vendido) || 0;\n            volY += parseInt(row.quantidade_vendas) || 0;\n            metaTop1Y += parseFloat(row.meta_top1_diaria) || 0;\n        }\n        \n        const tmY = volY > 0 ? totalY / volY : 0;\n        \n        msg += `*Ontem (Total):*\\n`;\n        msg += `- Faturou: *${formatter.format(totalY)}* (${volY} vendas) | Ticket Médio: *${formatter.format(tmY)}*\\n`;\n        \n        if (totalY >= metaTop1Y && metaTop1Y > 0) {\n            msg += `- Meta Top 1: *Batida!* 🎉 (Superou em ${formatter.format(totalY - metaTop1Y)})\\n`;\n        } else if (metaTop1Y > 0) {\n            msg += `- Meta Top 1: Não atingida. Faltou *${formatter.format(metaTop1Y - totalY)}*.\\n`;\n        }\n        \n        // Seller breakdown yesterday\n        msg += `_Vendedores (Ontem):_\\n`;\n        for (const row of yRows) {\n            const vTotal = parseFloat(row.valor_total_vendido) || 0;\n            if (vTotal > 0) {\n                msg += `  👤 ${row.nome_vendedor}: ${formatter.format(vTotal)}\\n`;\n            }\n        }\n    } else {\n        msg += `*Ontem:* Sem vendas registradas.\\n`;\n    }\n\n    // MONTH AGGREGATION\n    if (mRows.length > 0) {\n        let totalM = 0, volM = 0;\n        let metaMinM = 0, metaTop1M = 0, metaTop2M = 0, metaMasterM = 0;\n        \n        for (const row of mRows) {\n            totalM += parseFloat(row.valor_total_vendido) || 0;\n            volM += parseInt(row.quantidade_vendas) || 0;\n            metaMinM += parseFloat(row.meta_minima) || 0;\n            metaTop1M += parseFloat(row.meta_top1) || 0;\n            metaTop2M += parseFloat(row.meta_top2) || 0;\n            metaMasterM += parseFloat(row.meta_master) || 0;\n        }\n        \n        const tmM = volM > 0 ? totalM / volM : 0;\n        \n        msg += `\\n*Mês Atual (Consolidado):*\\n`;\n        msg += `- Faturou: *${formatter.format(totalM)}* (${volM} vendas) | Ticket Médio: *${formatter.format(tmM)}*\\n`;\n        \n        msg += `_Distância para as Metas (Mês):_\\n`;\n        \n        const checkMeta = (nome, metaVal, total) => {\n            if (metaVal <= 0) return '';\n            if (total >= metaVal) {\n                return `  🎯 ${nome}: *Batida!* (Superou em ${formatter.format(total - metaVal)})\\n`;\n            } else {\n                return `  📉 ${nome}: Faltam *${formatter.format(metaVal - total)}*\\n`;\n            }\n        };\n        \n        msg += checkMeta('Mínima', metaMinM, totalM);\n        msg += checkMeta('Top 1', metaTop1M, totalM);\n        msg += checkMeta('Top 2', metaTop2M, totalM);\n        msg += checkMeta('Master', metaMasterM, totalM);\n        \n        // Seller breakdown month\n        msg += `_Vendedores (Mês):_\\n`;\n        for (const row of mRows) {\n            const vTotal = parseFloat(row.valor_total_vendido) || 0;\n            if (vTotal > 0) {\n                msg += `  👤 ${row.nome_vendedor}: ${formatter.format(vTotal)}\\n`;\n            }\n        }\n    } else {\n        msg += `\\n*Mês Atual:* Sem vendas registradas.\\n`;\n    }\n    \n    msg += `\\n`;\n}\n\nreturn [{ json: { message: msg.trim() } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        650,
+        0
+      ],
+      "id": "code-format",
+      "name": "Formatar Mensagem"
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Postgres Yesterday",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Postgres Month",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Yesterday": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Month": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Formatar Mensagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

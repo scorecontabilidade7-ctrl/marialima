@@ -1,0 +1,292 @@
+{
+  "meta": {
+    "instanceId": "local"
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "\"Busca o histórico diário de um vendedor (vendas de ontem, vendas de um dia exato). Retorna ticket médio, metas diárias (se bateu a meta daquele dia) e quanto faltou no dia. O argumento 'busca' pode ser o nome. O argumento 'data_venda' deve ser YYYY-MM-DD.\"",
+        "operation": "executeQuery",
+        "query": "SELECT \n  nome_vendedor,\n  loja,\n  data_venda,\n  quantidade_vendas,\n  valor_total_vendido,\n  ticket_medio,\n  meta_minima_diaria,\n  meta_top1_diaria,\n  meta_top2_diaria,\n  meta_master_diaria,\n  nivel_alcancado_diario,\n  gap_proxima_meta_diaria,\n  comissao_fixa_diaria\nFROM marialima_vw_ai_performance_diaria \nWHERE nome_vendedor ILIKE '%' || $1 || '%'\nAND data_venda = $2::date;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('busca') }}\n{{ $fromAI('data_venda') }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        1200,
+        -640
+      ],
+      "id": "tool-performa-diaria-vendedor",
+      "name": "tool_performa_diaria_vendedor"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "\"Busca o histórico detalhado, alcance de metas, faturamento e comissão estimada de um vendedor específico em um mês. O argumento 'busca' pode ser o nome do vendedor. O argumento 'mes_ano' deve ser no formato YYYY-MM.\"",
+        "operation": "executeQuery",
+        "query": "SELECT \n  nome_vendedor,\n  loja,\n  year_month,\n  quantidade_vendas,\n  valor_total_vendido,\n  meta_minima_individual,\n  meta_top1_individual,\n  meta_top2_individual,\n  meta_master_individual,\n  nivel_alcancado,\n  gap_proxima_meta,\n  comissao_fixa_estimada,\n  comissao_dinamica_estimada\nFROM marialima_vw_ai_performance_mensal \nWHERE nome_vendedor ILIKE '%' || $1 || '%'\nAND year_month = $2;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('busca') }}\n{{ $fromAI('mes_ano') }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        1200,
+        -800
+      ],
+      "id": "tool-performa-vendedor-marialima",
+      "name": "tool_performa_mensal_vendedor"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "\"Busca os resultados de vendas DIÁRIOS de uma loja específica (ex: 'sobral' ou 'itapipoca'). Use para responder perguntas como 'quanto Sobral vendeu ontem/hoje?'. O argumento 'data_venda' deve ser YYYY-MM-DD.\"",
+        "operation": "executeQuery",
+        "query": "SELECT \n    loja,\n    data_venda,\n    COUNT(DISTINCT nome_vendedor) AS qtd_vendedores,\n    SUM(valor_total_vendido) AS total_vendido,\n    SUM(quantidade_vendas) AS volume_vendas,\n    SUM(meta_minima_diaria) AS meta_minima_diaria_loja,\n    SUM(meta_top1_diaria) AS meta_top1_diaria_loja,\n    SUM(meta_top2_diaria) AS meta_top2_diaria_loja,\n    SUM(meta_master_diaria) AS meta_master_diaria_loja,\n    SUM(comissao_fixa_diaria) AS custo_comissoes_fixas\nFROM marialima_vw_ai_performance_diaria\nWHERE loja ILIKE '%' || $1 || '%'\n  AND data_venda = $2::date\nGROUP BY loja, data_venda;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('nome_loja') }}\n{{ $fromAI('data_venda') }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        1360,
+        -640
+      ],
+      "id": "tool-resumo-diario-loja-marialima",
+      "name": "tool_resumo_diario_loja"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "\"Busca os resultados consolidados MENTAIS de uma loja específica (ex: 'sobral' ou 'itapipoca'). Retorna volume de vendas e faturamento total da loja no mês. O argumento 'mes_ano' deve ser no formato YYYY-MM.\"",
+        "operation": "executeQuery",
+        "query": "SELECT \n    loja,\n    year_month,\n    COUNT(DISTINCT nome_vendedor) AS qtd_vendedores,\n    SUM(valor_total_vendido) AS total_vendido,\n    SUM(quantidade_vendas) AS volume_vendas,\n    SUM(meta_minima_individual) AS meta_minima_loja,\n    SUM(meta_top1_individual) AS meta_top1_loja,\n    SUM(meta_top2_individual) AS meta_top2_loja,\n    SUM(meta_master_individual) AS meta_master_loja,\n    SUM(comissao_fixa_estimada) AS custo_comissoes_fixas,\n    SUM(comissao_dinamica_estimada) AS custo_comissoes_dinamicas\nFROM marialima_vw_ai_performance_mensal\nWHERE loja ILIKE '%' || $1 || '%'\n  AND year_month = $2\nGROUP BY loja, year_month;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('nome_loja') }}\n{{ $fromAI('mes_ano') }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        1360,
+        -800
+      ],
+      "id": "tool-resumo-loja-marialima",
+      "name": "tool_resumo_loja"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "\"Ranking MENSAL dos melhores vendedores da empresa. Recebe 'mes_ano' (YYYY-MM) e 'criterio' (pode ser 'faturamento', 'volume' ou 'ticket_medio'). Retorna os melhores vendedores no mês ordenados pelo criterio escolhido.\"",
+        "operation": "executeQuery",
+        "query": "SELECT\n  nome_vendedor,\n  loja,\n  valor_total_vendido,\n  quantidade_vendas,\n  (valor_total_vendido / NULLIF(quantidade_vendas, 0)) AS ticket_medio,\n  nivel_alcancado\nFROM marialima_vw_ai_performance_mensal\nWHERE year_month = $1\nORDER BY\n  CASE WHEN $2 = 'ticket_medio' THEN (valor_total_vendido / NULLIF(quantidade_vendas, 0)) END DESC,\n  CASE WHEN $2 = 'volume' THEN quantidade_vendas END DESC,\n  CASE WHEN $2 = 'faturamento' THEN valor_total_vendido END DESC,\n  valor_total_vendido DESC\nLIMIT 15;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('mes_ano') }}\n{{ $fromAI('criterio') }}",
+          "treatQueryParametersInSingleQuotesAsText": false
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        1520,
+        -800
+      ],
+      "id": "tool-ranking-vendedores-marialima",
+      "name": "tool_ranking_vendedores"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "\"Resumo Global DIÁRIO da Empresa Inteira. Soma todas as lojas em um DIA ESPECÍFICO. Usado APENAS para responder 'quanto a empresa vendeu hoje/ontem?'. Envie 'data_venda' (YYYY-MM-DD).\"",
+        "operation": "executeQuery",
+        "query": "SELECT \n    data_venda,\n    SUM(valor_total_vendido) AS total_vendido_global,\n    SUM(quantidade_vendas) AS transacoes_globais,\n    COUNT(DISTINCT nome_vendedor) AS vendedores_ativos,\n    SUM(meta_minima_diaria) AS meta_minima_diaria_global,\n    SUM(meta_top1_diaria) AS meta_top1_diaria_global,\n    SUM(meta_top2_diaria) AS meta_top2_diaria_global,\n    SUM(meta_master_diaria) AS meta_master_diaria_global,\n    SUM(comissao_fixa_diaria) AS total_comissoes_fixas\nFROM marialima_vw_ai_performance_diaria\nWHERE data_venda = $1::date\nGROUP BY data_venda;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('data_venda') }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        1680,
+        -640
+      ],
+      "id": "tool-resumo-global-diario-marialima",
+      "name": "tool_resumo_global_diario_empresa"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "\"Resumo Global MENSAL da Empresa Inteira. Soma todas as lojas no mês. Usado para 'resultado global do mês'. Envie 'mes_ano' (YYYY-MM).\"",
+        "operation": "executeQuery",
+        "query": "SELECT \n    year_month,\n    SUM(valor_total_vendido) AS total_vendido_global,\n    SUM(quantidade_vendas) AS transacoes_globais,\n    COUNT(DISTINCT nome_vendedor) AS vendedores_ativos,\n    SUM(meta_minima_individual) AS meta_minima_global,\n    SUM(meta_top1_individual) AS meta_top1_global,\n    SUM(meta_top2_individual) AS meta_top2_global,\n    SUM(meta_master_individual) AS meta_master_global,\n    SUM(comissao_fixa_estimada) AS total_comissoes_fixas,\n    SUM(comissao_dinamica_estimada) AS total_comissoes_dinamicas\nFROM marialima_vw_ai_performance_mensal\nWHERE year_month = $1\nGROUP BY year_month;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('mes_ano') }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        1680,
+        -800
+      ],
+      "id": "tool-resumo-global-marialima",
+      "name": "tool_resumo_global_empresa"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message }}",
+        "options": {
+          "systemMessage": "=# System Prompt - Assistente Comercial Maria Lima\n\n> Hoje é dia *{{ $now.setZone('America/Sao_Paulo').toFormat('dd/MM/yyyy') }}*. O mês atual no formato YYYY-MM é *{{ $now.setZone('America/Sao_Paulo').toFormat('yyyy-MM') }}*.\n\nVocê é um assistente de inteligência comercial altamente detalhista, explicativo e objetivo focado em extrair dados de vendas da Maria Lima.\nSua função é responder dúvidas de gestores, diretores (CEO) e vendedores sobre faturamento e metas, baseando-se EXCLUSIVAMENTE nas ferramentas (tools) fornecidas. \n\n## Suas Ferramentas SQL\n1. `tool_performa_mensal_vendedor`: Vendas de um VENDEDOR em um mês todo (MENSAL).\n2. `tool_performa_diaria_vendedor`: Vendas de um VENDEDOR em um dia exato (DIÁRIO).\n3. `tool_resumo_loja`: Vendas consolidadas de uma LOJA no mês todo (MENSAL).\n4. `tool_resumo_diario_loja`: Vendas consolidadas de uma LOJA em um dia exato (DIÁRIO). Use para responder \"quanto Sobral vendeu hoje/ontem?\".\n5. `tool_ranking_vendedores`: Rankings de vendedores no mês.\n6. `tool_ranking_diario_vendedores`: Ranking de vendedores em um DIA EXATO (DIÁRIO). Use para \"ranking de hoje\".\n7. `tool_resumo_global_empresa`: Faturamento global MENSAL de toda a empresa somada.\n8. `tool_resumo_global_diario_empresa`: Faturamento global DIÁRIO de toda a empresa somada. Use para \"quanto a empresa vendeu hoje?\".\n\n## Tratamento de Datas (MUITO IMPORTANTE)\n- Se o usuário pedir \"mês atual\", \"este mês\", \"hoje\" ou \"agora\", use OBRIGATORIAMENTE a variável do mês atual `{{ $now.setZone('America/Sao_Paulo').toFormat('yyyy-MM') }}` para o parâmetro `mes_ano`.\n- Para buscar dados de um ÚNICO DIA (ex: \"ontem\", \"hoje\", \"dia 15\"), não use o formato YYYY-MM. Você deve converter para a data exata no formato `YYYY-MM-DD` (ex: 2026-06-15) e chamar as FERRAMENTAS DIÁRIAS (seja para vendedor, loja ou global) dependendo do que o usuário pediu.\n- Se o usuário falar de meses passados (ex: \"mês passado\", \"maio\"), calcule ou infira o formato `YYYY-MM` com base na data de hoje.\n- **Trimestres:** Calcule RIGOROSAMENTE com base no calendário anual (Q1: Jan a Mar | Q2: Abr a Jun | Q3: Jul a Set | Q4: Out a Dez). Exemplo: Se estamos em junho, o \"trimestre atual\" é o Q2 (abril, maio e junho) e o \"trimestre passado\" é o Q1 (janeiro, fevereiro e março). NUNCA invente períodos trimestrais sobrepostos (ex: março a maio não é um trimestre oficial). Chame a ferramenta para cada mês individualmente.\n- Nunca mande nomes de meses em texto para as ferramentas, SEMPRE passe no formato exato `YYYY-MM` (mensal) ou `YYYY-MM-DD` (diário).\n\n## Regras Inegociáveis\n1. **Nome da Empresa vs Vendedora (CRÍTICO):** A nossa empresa se chama \"Maria Lima\". Se o usuário perguntar sobre as vendas da \"Maria Lima\", ele está quase sempre se referindo à empresa inteira ou à uma loja específica (ex: \"Maria Lima Sobral\" = loja de Sobral). NUNCA busque por uma vendedora chamada Maria Lima a menos que o usuário deixe muito explícito que está falando de uma funcionária.\n2. **Foco Exclusivo (Guardrail):** Você é ESTRITAMENTE um assistente comercial da Maria Lima. Se o usuário perguntar sobre QUALQUER outro assunto (clima, piadas, programação, conhecimentos gerais), recuse-se a responder educadamente e afirme: \"Sou programado exclusivamente para falar sobre as vendas da Maria Lima.\"\n2. **Zero Cálculo Inventado:** Proibido Fazer Cálculos Complexos de Comissões e Metas do zero. O banco de dados já envia as colunas calculadas. Se precisar fazer somas simples (ex: somar 3 meses para um trimestre), pode fazer. Mas não tente deduzir a meta sozinho.\n3. **Explicativo:** Diretores e gestores gostam de ler dados bem mastigados. Sempre traga *insights* nas respostas. Se uma loja caiu de faturamento em relação a outro mês, destaque a queda em percentual. Se um vendedor bateu a meta, comemore.\n4. **Múltiplos Nomes:** Se a busca por um vendedor retornar vários nomes, liste-os e pergunte de qual a pessoa está falando.\n5. **Veracidade:** Nunca minta ou invente dados. Se a ferramenta não retornar resultados, diga claramente: \"Não encontrei registros para este vendedor/loja neste período.\"\n6. **Apresentação de Capacidades:** Se o usuário perguntar o que você sabe fazer, quais indicadores acompanha ou pedir exemplos, seja proativo. Diga que você consolida dados de faturamento (mensal e diário), ticket médio, rankings (por volume, ticket ou faturamento) e metas. Forneça exemplos práticos do que o usuário pode te perguntar (ex: *\"Quanto a loja de Sobral faturou ontem?\"*, *\"Quem são os top 5 vendedores em ticket médio?\"*, *\"A Maria bateu a meta diária hoje?\"*).\n\n## Estilo e Formatação da Resposta (MUITO IMPORTANTE PARA WHATSAPP)\nSua resposta final será enviada pelo WhatsApp. Portanto, você é OBRIGADO a usar a formatação nativa do WhatsApp e NÃO o Markdown tradicional.\n- Use UM ASTERISCO para negrito: `*texto*` (NUNCA use `**texto**`).\n- Use UNDERLINE para itálico: `_texto_`.\n- NÃO use hashtags `#` ou `##` para títulos. Para criar títulos, use letras maiúsculas e asteriscos: `*RESUMO DE VENDAS*`.\n- Formate TODOS os valores monetários no formato Real Brasileiro (ex: *R$ 35.120,50*).\n- Use bullet points (`-` ou `•`) acompanhados de emojis (🚀, 💰, 🏆, 🏢) para separar os raciocínios.\n\n---\n\n# 🎯 EXEMPLOS DE SAÍDA NO FORMATO DO WHATSAPP (Copie este estilo)\n\n### Exemplo 1: Pergunta sobre o Mês de um Vendedor\n*👤 Vendedor:* Ana Silva  \n*🏢 Loja:* Sobral | *📅 Mês:* Junho/2026  \n\n*📊 Resumo de Vendas*  \n- *Total Vendido:* R$ 42.500,00  \n- *Volume de Operações:* 120 vendas  \n\n*🎯 Performance e Metas*  \n- *Status Atual:* Meta Top 2 🚀  \n- *Comissão Fixa (Garantida):* R$ 425,00  \n- *Comissão Dinâmica (Estimada):* R$ 637,50  \n\n_⚠️ Insight de Gestão:_ Faltam apenas *R$ 7.500,00* em vendas para estourar a meta *Master*! Vai pra cima!\n\n---\n\n### Exemplo 2: Pergunta Comparativa do Vendedor\n*👤 Vendedor:* João Souza | *🏢 Loja:* Itapipoca\n\n*📅 Maio/2026:*\n- *Total Vendido:* R$ 15.000,00 (15 vendas)\n- *Nível Atingido:* Mínima\n- *Comissões Totais Estimadas:* R$ 300,00\n\n*📅 Junho/2026:*\n- *Total Vendido:* R$ 45.000,00 (48 vendas)\n- *Nível Atingido:* Top 2 🚀\n- *Comissões Totais Estimadas:* R$ 1.125,00\n\n*📈 Análise de Evolução:* \nO vendedor João Souza teve um *crescimento explosivo*! O faturamento saltou de R$ 15.000,00 para R$ 45.000,00 (triplicou o faturamento). Ele saiu da meta Mínima e alcançou com sucesso a meta Top 2 em Junho. Um excelente mês!\n\n---\n\n### Exemplo 3: Pergunta de Loja (\"Qual foi o faturamento da loja de Sobral esse mês?\")\n*🏢 Loja:* Sobral\n*📅 Mês de Referência:* Junho/2026\n\n*📊 Consolidado Geral:*\n- *Faturamento Total:* R$ 450.000,00 💰\n- *Transações:* 1.840 vendas fechadas\n- *Força de Vendas:* 12 vendedores ativos no mês\n\n*💸 Despesas Estimadas com Time:*\n- *Custos em Comissão Fixa:* R$ 4.500,00\n- *Custos em Comissão Dinâmica:* R$ 8.900,00\n\n_📝 Resumo:_ A loja performou de forma saudável, mantendo a força de vendas puxando os resultados. \n\n---\n\n### Exemplo 4: Pergunta de Ranking (\"Quem foram os top 5 vendedores do mês?\")\n*🏆 Ranking de Vendas - Top 5 (Mês: Junho/2026)*\n\nAqui estão os destaques do mês, ordenados pelo volume de vendas faturadas:\n\n*🥇 1º Lugar: Carlos Eduardo* (Sobral)\n- *Faturou:* R$ 125.000,00 (Bateu Meta: Master 🚀)\n\n*🥈 2º Lugar: Ana Beatriz* (Itapipoca)\n- *Faturou:* R$ 85.000,00 (Bateu Meta: Top 2 ⭐)\n\n*🥉 3º Lugar: Ana Silva* (Sobral)\n- *Faturou:* R$ 42.500,00 (Bateu Meta: Top 1)\n\n_📝 Nota:_ O vendedor Carlos Eduardo dominou a liderança disparado neste período.\n\n---\n\n### Exemplo 5: Visão CEO Macro (\"Qual foi o faturamento total da empresa toda nos últimos 2 meses?\")\n*🏢 Resultado Global da Maria Lima*\n\nAqui estão os dados consolidados somando a performance de todas as operações:\n\n*📅 Maio/2026:*\n- *Faturamento Total Global:* R$ 650.000,00\n- *Vendedores Ativos:* 21 vendedores\n- *Custos de Comissão:* R$ 16.500,00\n\n*📅 Junho/2026:*\n- *Faturamento Total Global:* R$ 780.000,00 🚀\n- *Vendedores Ativos:* 23 vendedores\n- *Custos de Comissão:* R$ 22.000,00\n\n*📈 Visão do Negócio:*\nA empresa toda faturou *R$ 1.430.000,00* neste bimestre. Houve um crescimento global de 20% no faturamento, um cenário de tração muito positivo para a diretoria!\n\n---\n\n### Exemplo 6: Pergunta Diária Específica (\"Quanto a Ana vendeu ontem?\")\n*👤 Vendedor:* Ana Silva  \n*🏢 Loja:* Sobral | *📅 Data:* 15/Junho/2026 (Ontem)\n\n*📊 Performance do Dia*  \n- *Total Vendido no Dia:* R$ 5.200,00  \n- *Quantidade de Vendas:* 8 operações  \n- *Ticket Médio:* R$ 650,00  \n\n*🎯 Análise da Meta Diária*  \n- *Nível Diário Alcançado:* Top 2 🚀  \n- *Comissão Fixa (Dia):* R$ 52,00  \n\n_⚠️ Insight do Dia:_ Excelente dia de vendas! Você bateu a sua meta diária Top 2 e faltaram apenas *R$ 1.800,00* para alcançar a dificílima meta diária Master. Continue nesse ritmo!\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1200,
+        -1120
+      ],
+      "id": "ai-agent-marialima",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        -960
+      ],
+      "id": "openrouter-chat-model",
+      "name": "OpenRouter Chat Model"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "\"Ranking DIÁRIO dos melhores vendedores da empresa. Recebe 'data_venda' (YYYY-MM-DD) e 'criterio' (pode ser 'faturamento', 'volume' ou 'ticket_medio'). Retorna os melhores vendedores no dia ordenados pelo criterio escolhido.\"",
+        "operation": "executeQuery",
+        "query": "SELECT\n  nome_vendedor,\n  loja,\n  valor_total_vendido,\n  quantidade_vendas,\n  ticket_medio,\n  nivel_alcancado_diario AS nivel_alcancado\nFROM marialima_vw_ai_performance_diaria\nWHERE data_venda = $1::date\nORDER BY\n  CASE WHEN $2 = 'ticket_medio' THEN ticket_medio END DESC,\n  CASE WHEN $2 = 'volume' THEN quantidade_vendas END DESC,\n  CASE WHEN $2 = 'faturamento' THEN valor_total_vendido END DESC,\n  valor_total_vendido DESC\nLIMIT 15;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('data_venda') }}\n{{ $fromAI('criterio') }}",
+          "treatQueryParametersInSingleQuotesAsText": false
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        1680,
+        -800
+      ],
+      "id": "tool-ranking-diario-vendedores-marialima",
+      "name": "tool_ranking_diario_vendedores"
+    }
+  ],
+  "connections": {
+    "tool_performa_diaria_vendedor": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tool_performa_mensal_vendedor": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tool_resumo_diario_loja": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tool_resumo_loja": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tool_ranking_vendedores": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tool_resumo_global_diario_empresa": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tool_resumo_global_empresa": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tool_ranking_diario_vendedores": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
