@@ -324,18 +324,23 @@ export default function SellerProfile() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
             { 
-              label: "Total Histórico",  
-              value: (
-                <>
-                  <span className="sm:hidden">{fmtShort(totalGeral)}</span>
-                  <span className="hidden sm:inline">{fmt(totalGeral)}</span>
-                </>
-              ), 
+              label: "Total no Mês",  
+              value: fmt(totalMes), 
               icon: DollarSign,  
-              sub: `${numPedidos} pedidos` 
+              sub: `${monthVendas.length} pedidos` 
             },
-            { label: "Comissão no Mês",   value: fmtShort(displayComissao), icon: Award,       sub: commissionMode === "dinamica" ? "dinâmica" : "fixa" },
-            { label: "Ticket Médio",     value: fmtShort(ticketMedio),  icon: TrendingUp,  sub: "por pedido" },
+            { 
+              label: "Comissão no Mês",   
+              value: fmt(displayComissao), 
+              icon: Award,       
+              sub: commissionMode === "dinamica" ? "dinâmica" : "fixa" 
+            },
+            { 
+              label: "Ticket Médio",     
+              value: fmt(ticketMedio), 
+              icon: TrendingUp,  
+              sub: "por pedido" 
+            },
             { label: "Pedidos no Mês",   value: String(monthVendas.length), icon: ShoppingBag, sub: `em ${selectedMonthLabel.toLowerCase()}` },
           ].map((kpi) => (
             <Card key={kpi.label} className="border-border bg-card shadow-sm overflow-hidden">
