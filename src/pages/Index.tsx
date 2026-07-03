@@ -116,7 +116,7 @@ export default function Index({ store = "sobral" }: IndexProps) {
   const activeView = searchParams.get("view") || "cockpit";
   const [selectedMeta, setSelectedMeta] = useState<MetaKey>("minima");
 
-  const targetYearMonth = `${currentYear}-${String(currentMonth).padStart(2, "0")}`;
+  const targetYearMonth = `${selectedMonth.year}-${String(selectedMonth.month).padStart(2, "0")}`;
   const { data: goalData } = useCurrentMonthGoals(store, targetYearMonth);
 
   const dynamicRanking = useDynamicCommissions(
