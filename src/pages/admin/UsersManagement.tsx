@@ -12,6 +12,17 @@ import { toast } from "sonner";
 import { Plus, Shield, ArrowLeft, MoreHorizontal, Edit, PowerOff, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useVendedoresInfo } from "@/hooks/useVendedoresConfig";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+
+const formatWhatsapp = (val: string) => {
+  const digits = val.replace(/\D/g, "").slice(0, 11);
+  if (digits.length === 0) return "";
+  if (digits.length <= 2) return `(${digits}`;
+  if (digits.length <= 3) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2, 3)} ${digits.slice(3)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 3)} ${digits.slice(3, 7)}-${digits.slice(7, 11)}`;
+};
 
 interface Profile {
   id: string;
@@ -23,6 +34,9 @@ interface Profile {
   nome_vendedor?: string | null;
   loja?: string | null;
   active?: boolean;
+  whatsapp?: string | null;
+  agente_ia?: boolean;
+  tipo_notificacao?: string[];
 }
 
 interface UserRole {
@@ -48,14 +62,17 @@ export default function UsersManagement() {
   const qc = useQueryClient();
   const [openNew, setOpenNew] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
-  const [newUser, setNewUser] = useState({ username: "", email: "", password: "", full_name: "", role: "seller", nome_vendedor: "", loja: "" });
-  const [editingUser, setEditingUser] = useState<{ id: string; email: string; password: string; full_name: string; role: string; nome_vendedor: string; loja: string; active: boolean } | null>(null);
+  const [newUser, setNewUser] = useState<{ username: string; email: string; password: string; full_name: string; role: string; nome_vendedor: string; loja: string; whatsapp: string; agente_ia: boolean; tipo_notificacao: string[] }>({ username: "", email: "", password: "", full_name: "", role: "seller", nome_vendedor: "", loja: "", whatsapp: "", agente_ia: false, tipo_notificacao: [] });
+  const [editingUser, setEditingUser] = useState<{ id: string; email: string; password: string; full_name: string; role: string; nome_vendedor: string; loja: string; active: boolean; whatsapp: string; agente_ia: boolean; tipo_notificacao: string[] } | null>(null);
   const { data: sellersInfo } = useVendedoresInfo();
 
   const { data: profiles, isLoading } = useQuery({
     queryKey: ["admin-profiles"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).from("marialima_profiles").select("*");
+      const { data, error } = await (supabase as any)
+        .from("marialima_profiles")
+        .select("*")
+        .order("username", { ascending: true });
       if (error) throw error;
       return data as Profile[];
     },
@@ -86,23 +103,28 @@ export default function UsersManagement() {
       if (data?.error) throw new Error(data.error);
       
       // Update profile with seller info if role is seller
+      const updateData: any = {
+        whatsapp: newUser.whatsapp || null,
+        agente_ia: newUser.agente_ia,
+        tipo_notificacao: newUser.tipo_notificacao,
+      };
       if (newUser.role === "seller" && newUser.nome_vendedor) {
-        const { error: profileError } = await (supabase as any)
-          .from("marialima_profiles")
-          .update({
-            nome_vendedor: newUser.nome_vendedor,
-            loja: newUser.loja || null,
-          })
-          .eq("id", data.user.id);
-        if (profileError) console.error("Error linking seller to profile:", profileError);
+        updateData.nome_vendedor = newUser.nome_vendedor;
+        updateData.loja = newUser.loja || null;
       }
+      
+      const { error: profileError } = await (supabase as any)
+        .from("marialima_profiles")
+        .update(updateData)
+        .eq("id", data.user.id);
+      if (profileError) console.error("Error linking seller to profile:", profileError);
       
       return data.user;
     },
     onSuccess: () => {
       toast.success("Usuário criado com sucesso!");
       setOpenNew(false);
-      setNewUser({ username: "", email: "", password: "", full_name: "", role: "seller", nome_vendedor: "", loja: "" });
+      setNewUser({ username: "", email: "", password: "", full_name: "", role: "seller", nome_vendedor: "", loja: "", whatsapp: "", agente_ia: false, tipo_notificacao: [] });
       qc.invalidateQueries({ queryKey: ["admin-profiles"] });
       qc.invalidateQueries({ queryKey: ["admin-roles"] });
     },
@@ -128,24 +150,25 @@ export default function UsersManagement() {
 
       // Update profile with seller info if role is seller
       if (editingUser && vars.role) {
+        const updateData: any = {
+          whatsapp: editingUser.whatsapp || null,
+          agente_ia: editingUser.agente_ia,
+          tipo_notificacao: editingUser.tipo_notificacao,
+        };
+
         if (vars.role === "seller" && editingUser.nome_vendedor) {
-          const { error: profileError } = await (supabase as any)
-            .from("marialima_profiles")
-            .update({
-              nome_vendedor: editingUser.nome_vendedor,
-              loja: editingUser.loja || null,
-            })
-            .eq("id", vars.id);
-          if (profileError) console.error("Error linking seller to profile:", profileError);
+          updateData.nome_vendedor = editingUser.nome_vendedor;
+          updateData.loja = editingUser.loja || null;
         } else if (vars.role !== "seller") {
-          const { error: profileError } = await (supabase as any)
-            .from("marialima_profiles")
-            .update({
-              nome_vendedor: null,
-              loja: null,
-            })
-            .eq("id", vars.id);
+          updateData.nome_vendedor = null;
+          updateData.loja = null;
         }
+        
+        const { error: profileError } = await (supabase as any)
+          .from("marialima_profiles")
+          .update(updateData)
+          .eq("id", vars.id);
+        if (profileError) console.error("Error updating profile:", profileError);
       }
 
       return data.user;
@@ -172,7 +195,10 @@ export default function UsersManagement() {
       role: r,
       nome_vendedor: p.nome_vendedor || "",
       loja: p.loja || "",
-      active: p.active !== false
+      active: p.active !== false,
+      whatsapp: p.whatsapp || "",
+      agente_ia: !!p.agente_ia,
+      tipo_notificacao: p.tipo_notificacao || [],
     });
     setOpenEdit(true);
   };
@@ -210,6 +236,10 @@ export default function UsersManagement() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
+                if (newUser.whatsapp && newUser.whatsapp.replace(/\D/g, "").length < 11) {
+                  toast.error("WhatsApp incompleto", { description: "O número deve ter 11 dígitos" });
+                  return;
+                }
                 createUser.mutate();
               }}
               className="space-y-4"
@@ -266,6 +296,47 @@ export default function UsersManagement() {
                 </Select>
               </div>
 
+              <div className="space-y-2">
+                <Label>WhatsApp</Label>
+                <Input
+                  value={newUser.whatsapp}
+                  onChange={(e) => setNewUser({ ...newUser, whatsapp: formatWhatsapp(e.target.value) })}
+                  placeholder="(XX) X XXXX-XXXX"
+                  maxLength={16}
+                />
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  id="agente-ia-new"
+                  checked={newUser.agente_ia}
+                  onCheckedChange={(checked) => setNewUser({ ...newUser, agente_ia: checked })}
+                />
+                <Label htmlFor="agente-ia-new">Ativar Agente IA</Label>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Tipos de Notificação</Label>
+                <div className="flex flex-col gap-2">
+                  {["Resumo diário geral", "Resumo diário vendedor", "Resumo por loja"].map(tipo => (
+                    <div key={tipo} className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={`notif-new-${tipo}`}
+                        checked={newUser.tipo_notificacao.includes(tipo)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setNewUser({ ...newUser, tipo_notificacao: [...newUser.tipo_notificacao, tipo] });
+                          } else {
+                            setNewUser({ ...newUser, tipo_notificacao: newUser.tipo_notificacao.filter(t => t !== tipo) });
+                          }
+                        }}
+                      />
+                      <Label htmlFor={`notif-new-${tipo}`} className="text-sm font-normal">{tipo}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {newUser.role === "seller" && (
                 <div className="grid grid-cols-2 gap-4 border border-border/60 p-4 rounded-lg bg-secondary/20">
                   <div className="space-y-2">
@@ -311,6 +382,10 @@ export default function UsersManagement() {
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
+                  if (editingUser.whatsapp && editingUser.whatsapp.replace(/\D/g, "").length < 11) {
+                    toast.error("WhatsApp incompleto", { description: "O número deve ter 11 dígitos" });
+                    return;
+                  }
                   updateUser.mutate({
                     id: editingUser.id,
                     email: editingUser.email,
@@ -363,6 +438,47 @@ export default function UsersManagement() {
                   </Select>
                 </div>
 
+                <div className="space-y-2">
+                  <Label>WhatsApp</Label>
+                  <Input
+                    value={editingUser.whatsapp}
+                    onChange={(e) => setEditingUser({ ...editingUser, whatsapp: formatWhatsapp(e.target.value) })}
+                    placeholder="(XX) X XXXX-XXXX"
+                    maxLength={16}
+                  />
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Switch 
+                    id="agente-ia-edit"
+                    checked={editingUser.agente_ia}
+                    onCheckedChange={(checked) => setEditingUser({ ...editingUser, agente_ia: checked })}
+                  />
+                  <Label htmlFor="agente-ia-edit">Ativar Agente IA</Label>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Tipos de Notificação</Label>
+                  <div className="flex flex-col gap-2">
+                    {["Resumo diário geral", "Resumo diário vendedor", "Resumo por loja"].map(tipo => (
+                      <div key={tipo} className="flex items-center space-x-2">
+                        <Checkbox 
+                          id={`notif-edit-${tipo}`}
+                          checked={editingUser.tipo_notificacao.includes(tipo)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setEditingUser({ ...editingUser, tipo_notificacao: [...editingUser.tipo_notificacao, tipo] });
+                            } else {
+                              setEditingUser({ ...editingUser, tipo_notificacao: editingUser.tipo_notificacao.filter(t => t !== tipo) });
+                            }
+                          }}
+                        />
+                        <Label htmlFor={`notif-edit-${tipo}`} className="text-sm font-normal">{tipo}</Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 {editingUser.role === "seller" && (
                   <div className="grid grid-cols-2 gap-4 border border-border/60 p-4 rounded-lg bg-secondary/20">
                     <div className="space-y-2">
@@ -411,17 +527,18 @@ export default function UsersManagement() {
               <thead>
                 <tr className="bg-sidebar text-sidebar-foreground">
                   <th className="text-left px-4 py-2.5 font-medium">Usuário</th>
-                  <th className="text-left px-4 py-2.5 font-medium">Nome</th>
                   <th className="text-left px-4 py-2.5 font-medium">Funções</th>
+                  <th className="text-left px-4 py-2.5 font-medium">Agente IA</th>
+                  <th className="text-left px-4 py-2.5 font-medium">Notificações</th>
                   <th className="text-left px-4 py-2.5 font-medium">Status</th>
                   <th className="text-right px-4 py-2.5 font-medium">Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {isLoading ? (
-                  <tr><td colSpan={3} className="text-center py-8 text-muted-foreground">Carregando...</td></tr>
+                  <tr><td colSpan={6} className="text-center py-8 text-muted-foreground">Carregando...</td></tr>
                 ) : !profiles?.length ? (
-                  <tr><td colSpan={3} className="text-center py-8 text-muted-foreground">Nenhum usuário</td></tr>
+                  <tr><td colSpan={6} className="text-center py-8 text-muted-foreground">Nenhum usuário</td></tr>
                 ) : (
                   profiles.map((p) => (
                     <tr key={p.id} className="border-b border-border/30 hover:bg-muted/30">
@@ -433,7 +550,6 @@ export default function UsersManagement() {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-2.5">{p.full_name || "—"}</td>
                       <td className="px-4 py-2.5">
                         <div className="flex gap-1.5">
                           {getUserRoles(p.id).map((r) => (
@@ -447,6 +563,28 @@ export default function UsersManagement() {
                           ))}
                           {getUserRoles(p.id).length === 0 && (
                             <span className="text-muted-foreground text-xs">Sem função</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {p.agente_ia ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700">
+                            Ativo
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex flex-col gap-1">
+                          {p.tipo_notificacao && p.tipo_notificacao.length > 0 ? (
+                            p.tipo_notificacao.map(t => (
+                              <span key={t} className="inline-flex items-center px-2 py-0.5 rounded text-[10px] bg-secondary text-secondary-foreground w-max">
+                                {t}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-muted-foreground text-xs">—</span>
                           )}
                         </div>
                       </td>

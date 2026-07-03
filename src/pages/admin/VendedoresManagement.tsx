@@ -90,6 +90,12 @@ export default function VendedoresManagement() {
     return <div className="p-8">Carregando vendedores...</div>;
   }
 
+  const availableSellers = distinctSellers?.filter(
+    (seller) =>
+      !configs?.some((c) => c.nome_vendedor === seller.nome_vendedor) ||
+      seller.nome_vendedor === formData.nome_vendedor
+  );
+
   return (
     <div className="h-full overflow-y-auto space-y-6 max-w-7xl mx-auto p-4 md:p-8">
       <div className="flex items-center gap-4 mb-4">
@@ -131,7 +137,7 @@ export default function VendedoresManagement() {
                     <SelectValue placeholder="Selecione um vendedor" />
                   </SelectTrigger>
                   <SelectContent>
-                    {distinctSellers?.map((seller) => (
+                    {availableSellers?.map((seller) => (
                       <SelectItem key={seller.nome_vendedor} value={seller.nome_vendedor}>
                         {seller.nome_vendedor}
                       </SelectItem>
