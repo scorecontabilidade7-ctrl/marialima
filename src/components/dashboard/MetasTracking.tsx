@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Target, TrendingUp, Award, Star, Trophy } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Target, TrendingUp, Award, Star, Trophy, AlertTriangle } from "lucide-react";
 import { useCurrentMonthGoals } from "@/hooks/useMonthlyGoals";
 import { useVendedoresConfig } from "@/hooks/useVendedoresConfig";
 import type { RankingItem, TimelineItem } from "@/hooks/useSalesData";
@@ -207,6 +208,63 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
 
   const pctMinima = Math.min((totalRealized / METAS_LOJA[selectedMeta]) * 100, 100);
   const projection = diasUteisCorridos > 0 ? (totalRealized / diasUteisCorridos) * DIAS_UTEIS_MES : 0;
+
+  const [useAdjustedMetaPerWeek, setUseAdjustedMetaPerWeek] = useState<Record<number, boolean>>({});
+
+  const enrichedWeeks = useMemo(() => {
+    let accumulatedDeficit = 0;
+    
+    return weeks.map((week, weekIndex) => {
+      const weekTotal = week.days.reduce((sum, d) => {
+        const key = d.toISOString().slice(0, 10);
+        return sum + (salesByDate[key] || 0);
+      }, 0);
+
+      const baseWeekMeta = (() => {
+        if (distributionMode === "week" && weekPercents) {
+          const pct = weekPercents[weekIndex] ?? 0;
+          return metaMensalLoja * (pct / 100);
+        }
+        if (distributionMode === "day" && dayTargets) {
+          return week.days.reduce((s, d) => s + (dayTargets[d.toISOString().slice(0, 10)] || 0), 0);
+        }
+        return metaDiariaLoja * week.days.length;
+      })();
+
+      const useAdjusted = useAdjustedMetaPerWeek[weekIndex] ?? true;
+      const carriedDeficit = accumulatedDeficit;
+      const adjustedMeta = baseWeekMeta + carriedDeficit;
+      
+      const activeMeta = useAdjusted ? adjustedMeta : baseWeekMeta;
+      const activePct = activeMeta > 0 ? Math.min((weekTotal / activeMeta) * 100, 100) : 0;
+      
+      const lastDayOfWeek = week.days[week.days.length - 1];
+      const isWeekEnded = lastDayOfWeek <= todayUtc;
+      
+      if (isWeekEnded) {
+        if (weekTotal < activeMeta) {
+          accumulatedDeficit = activeMeta - weekTotal;
+        } else {
+          accumulatedDeficit = 0;
+        }
+      } else {
+        accumulatedDeficit = 0;
+      }
+
+      return {
+        ...week,
+        weekIndex,
+        weekTotal,
+        baseWeekMeta,
+        carriedDeficit,
+        adjustedMeta,
+        activeMeta,
+        useAdjusted,
+        activePct,
+        isWeekEnded,
+      };
+    });
+  }, [weeks, salesByDate, distributionMode, weekPercents, metaMensalLoja, dayTargets, metaDiariaLoja, useAdjustedMetaPerWeek, todayUtc]);
 
   return (
     <div className="space-y-5">
@@ -449,38 +507,31 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {weeks.map((week, weekIndex) => {
-            const weekTotal = week.days.reduce((sum, d) => {
-              const key = d.toISOString().slice(0, 10);
-              return sum + (salesByDate[key] || 0);
-            }, 0);
+          {enrichedWeeks.map((week) => {
+            const {
+              label, days, weekIndex, weekTotal, baseWeekMeta, carriedDeficit,
+              activeMeta, useAdjusted, activePct, isWeekEnded
+            } = week;
 
-            const weekMeta = (() => {
-              if (distributionMode === "week" && weekPercents) {
-                const pct = weekPercents[weekIndex] ?? 0;
-                return metaMensalLoja * (pct / 100);
-              }
-              if (distributionMode === "day" && dayTargets) {
-                return week.days.reduce((s, d) => s + (dayTargets[d.toISOString().slice(0, 10)] || 0), 0);
-              }
-              return metaDiariaLoja * week.days.length;
-            })();
+            const toggleAdjusted = (checked: boolean) => {
+              setUseAdjustedMetaPerWeek((prev) => ({ ...prev, [weekIndex]: checked }));
+            };
 
-            const weekPct = weekMeta > 0 ? Math.min((weekTotal / weekMeta) * 100, 100) : 0;
+            const hasCarriedDeficit = carriedDeficit > 0;
 
             return (
-              <div key={week.label} className="border border-border/50 bg-card rounded-xl p-5 shadow-sm transition-all hover:shadow-md">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+              <div key={label} className="border border-border/50 bg-card rounded-xl p-5 shadow-sm transition-all hover:shadow-md">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                   <h4 className="text-base font-bold text-foreground flex items-center gap-2">
-                    {week.label}
+                    {label}
                   </h4>
-                  {weekTotal >= weekMeta && weekMeta > 0 ? (
+                  {weekTotal >= activeMeta && activeMeta > 0 ? (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
-                      🎯 Meta Superada! ({weekPct.toFixed(0)}%)
+                      🎯 Meta Superada! ({activePct.toFixed(0)}%)
                     </span>
                   ) : weekTotal > 0 ? (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold">
-                      🏃 Faltou <span className="md:hidden">{formatBRLShort(weekMeta - weekTotal)}</span><span className="hidden md:inline">{formatBRL(weekMeta - weekTotal)}</span> ({weekPct.toFixed(0)}%)
+                      🏃 Faltou <span className="md:hidden">{formatBRLShort(activeMeta - weekTotal)}</span><span className="hidden md:inline">{formatBRL(activeMeta - weekTotal)}</span> ({activePct.toFixed(0)}%)
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground text-xs font-medium">
@@ -489,38 +540,72 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
                   )}
                 </div>
 
+                {hasCarriedDeficit && (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 bg-amber-50/50 dark:bg-amber-950/20 p-3 rounded-lg border border-amber-200/50 dark:border-amber-800/50">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-500" />
+                      <p className="text-xs font-medium text-amber-800 dark:text-amber-200">
+                        Esta semana inclui <strong className="font-bold">{formatBRL(carriedDeficit)}</strong> acumulados das semanas anteriores.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <label htmlFor={`switch-${weekIndex}`} className="text-xs font-semibold cursor-pointer select-none">
+                        Meta Ajustada
+                      </label>
+                      <Switch 
+                        id={`switch-${weekIndex}`}
+                        checked={useAdjusted} 
+                        onCheckedChange={toggleAdjusted} 
+                        className="data-[state=checked]:bg-amber-500"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-5">
                   <div className="bg-muted/40 rounded-lg p-2.5 sm:p-3 border border-border/50 flex flex-col justify-center min-w-0">
                     <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1 truncate">Meta Semanal</p>
                     <p className="text-base sm:text-xl font-bold text-foreground leading-none truncate">
-                      <span className="md:hidden">{formatBRLShort(weekMeta)}</span>
-                      <span className="hidden md:inline">{formatBRL(weekMeta)}</span>
+                      <span className="md:hidden">{formatBRLShort(activeMeta)}</span>
+                      <span className="hidden md:inline">{formatBRL(activeMeta)}</span>
                     </p>
                   </div>
                   <div className="bg-muted/40 rounded-lg p-2.5 sm:p-3 border border-border/50 flex flex-col justify-center min-w-0">
                     <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1 truncate">Realizado</p>
-                    <p className={`text-base sm:text-xl font-bold leading-none truncate ${weekTotal >= weekMeta ? "text-emerald-600" : "text-primary"}`}>
+                    <p className={`text-base sm:text-xl font-bold leading-none truncate ${weekTotal >= activeMeta ? "text-emerald-600" : "text-primary"}`}>
                       <span className="md:hidden">{formatBRLShort(weekTotal)}</span>
                       <span className="hidden md:inline">{formatBRL(weekTotal)}</span>
                     </p>
                   </div>
                   <div className="bg-muted/40 rounded-lg p-2.5 sm:p-3 border border-border/50 col-span-2 sm:col-span-1 flex flex-col justify-center min-w-0">
                     <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1 truncate">Diferença</p>
-                    <p className={`text-base sm:text-xl font-bold leading-none truncate ${weekTotal - weekMeta >= 0 ? "text-emerald-600" : "text-amber-600"}`}>
-                      {weekTotal - weekMeta > 0 ? "+" : ""}
-                      <span className="md:hidden">{formatBRLShort(weekTotal - weekMeta)}</span>
-                      <span className="hidden md:inline">{formatBRL(weekTotal - weekMeta)}</span>
+                    <p className={`text-base sm:text-xl font-bold leading-none truncate ${weekTotal - activeMeta >= 0 ? "text-emerald-600" : "text-amber-600"}`}>
+                      {weekTotal - activeMeta > 0 ? "+" : ""}
+                      <span className="md:hidden">{formatBRLShort(weekTotal - activeMeta)}</span>
+                      <span className="hidden md:inline">{formatBRL(weekTotal - activeMeta)}</span>
                     </p>
                   </div>
                 </div>
 
-                <Progress value={weekPct} className="h-2 mb-5" />
+                <Progress value={activePct} className="h-2 mb-5" />
 
                 <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                  {week.days.map((d) => {
+                  {days.map((d) => {
                     const key = d.toISOString().slice(0, 10);
                     const dayValue = salesByDate[key] || 0;
                     const isPast = d <= todayUtc;
+                    
+                    // Distribute activeMeta among the days of the week proportionally
+                    // If we use dayTargets, we scale it. Otherwise we divide evenly.
+                    const dayMeta = (() => {
+                      if (distributionMode === "day" && dayTargets) {
+                        const originalDayTarget = dayTargets[key] || 0;
+                        const factor = baseWeekMeta > 0 ? (activeMeta / baseWeekMeta) : 1;
+                        return originalDayTarget * factor;
+                      }
+                      return days.length > 0 ? activeMeta / days.length : 0;
+                    })();
+
                     return (
                       <div
                         key={key}
@@ -534,6 +619,9 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
                       >
                         <p className="text-[11px] font-semibold text-muted-foreground mb-0.5">{DAY_NAMES[d.getUTCDay()]}</p>
                         <p className="text-[10px] text-muted-foreground/60 mb-1.5">{d.getUTCDate()}/{d.getUTCMonth() + 1}</p>
+                        <div className="mb-1 text-[9px] text-muted-foreground font-medium uppercase tracking-wider">
+                          Meta: {formatBRLShort(dayMeta)}
+                        </div>
                         <p className={`font-bold text-sm leading-none ${dayValue > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/40"}`}>
                           {dayValue > 0 ? (
                             <>
