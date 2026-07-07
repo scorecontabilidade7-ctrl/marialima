@@ -229,7 +229,7 @@ export default function UsersManagement() {
               <Plus className="w-4 h-4 mr-2" /> Novo Usuário
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Criar Novo Usuário</DialogTitle>
             </DialogHeader>
@@ -377,7 +377,7 @@ export default function UsersManagement() {
         </Dialog>
 
         <Dialog open={openEdit} onOpenChange={setOpenEdit}>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Editar Usuário</DialogTitle>
             </DialogHeader>

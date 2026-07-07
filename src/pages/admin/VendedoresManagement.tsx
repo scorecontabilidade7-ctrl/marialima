@@ -118,7 +118,7 @@ export default function VendedoresManagement() {
               <Plus className="w-4 h-4" /> Novo Vendedor
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{formData.id ? "Editar Vendedor" : "Novo Vendedor"}</DialogTitle>
             </DialogHeader>

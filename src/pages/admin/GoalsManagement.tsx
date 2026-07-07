@@ -294,7 +294,7 @@ export default function GoalsManagement() {
               <Plus className="w-4 h-4 mr-2" /> Nova Meta
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Cadastrar Meta Mensal</DialogTitle>
             </DialogHeader>
