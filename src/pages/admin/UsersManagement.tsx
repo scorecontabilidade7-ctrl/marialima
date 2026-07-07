@@ -212,8 +212,8 @@ export default function UsersManagement() {
   };
 
   return (
-    <div className="h-full w-full overflow-y-auto overflow-x-hidden space-y-6 max-w-7xl mx-auto p-4 md:p-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="h-full w-full flex flex-col space-y-6 max-w-7xl mx-auto p-4 md:p-8 overflow-hidden">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} className="shrink-0">
             <ArrowLeft className="w-5 h-5" />
@@ -234,6 +234,7 @@ export default function UsersManagement() {
               <DialogTitle>Criar Novo Usuário</DialogTitle>
             </DialogHeader>
             <form
+              autoComplete="off"
               onSubmit={(e) => {
                 e.preventDefault();
                 if (newUser.whatsapp && newUser.whatsapp.replace(/\D/g, "").length < 11) {
@@ -265,6 +266,7 @@ export default function UsersManagement() {
                 <Label>Email</Label>
                 <Input
                   type="email"
+                  autoComplete="off"
                   value={newUser.email}
                   onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                   placeholder="usuario@email.com"
@@ -275,6 +277,7 @@ export default function UsersManagement() {
                 <Label>Senha</Label>
                 <Input
                   type="password"
+                  autoComplete="new-password"
                   value={newUser.password}
                   onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
                   placeholder="••••••••"
@@ -380,6 +383,7 @@ export default function UsersManagement() {
             </DialogHeader>
             {editingUser && (
               <form
+                autoComplete="off"
                 onSubmit={(e) => {
                   e.preventDefault();
                   if (editingUser.whatsapp && editingUser.whatsapp.replace(/\D/g, "").length < 11) {
@@ -409,6 +413,7 @@ export default function UsersManagement() {
                   <Label>Novo Email (deixe em branco para não alterar)</Label>
                   <Input
                     type="email"
+                    autoComplete="off"
                     value={editingUser.email}
                     onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
                     placeholder="usuario@email.com"
@@ -418,6 +423,7 @@ export default function UsersManagement() {
                   <Label>Nova Senha (deixe em branco para não alterar)</Label>
                   <Input
                     type="password"
+                    autoComplete="new-password"
                     value={editingUser.password}
                     onChange={(e) => setEditingUser({ ...editingUser, password: e.target.value })}
                     placeholder="••••••••"
@@ -517,15 +523,15 @@ export default function UsersManagement() {
         </Dialog>
       </div>
 
-      <Card className="border border-border/60 w-full overflow-hidden">
-        <CardHeader className="pb-3">
+      <Card className="border border-border/60 w-full flex-1 flex flex-col min-h-0 overflow-hidden">
+        <CardHeader className="pb-3 shrink-0">
           <CardTitle className="text-sm font-semibold">Usuários Cadastrados</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="w-full overflow-x-auto">
+        <CardContent className="p-0 flex-1 overflow-auto relative">
+          <div className="w-full min-w-max">
             <table className="w-full text-sm whitespace-nowrap">
-              <thead>
-                <tr className="bg-sidebar text-sidebar-foreground">
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-sidebar text-sidebar-foreground shadow-sm">
                   <th className="text-left px-4 py-2.5 font-medium">Usuário</th>
                   <th className="text-left px-4 py-2.5 font-medium">Funções</th>
                   <th className="text-left px-4 py-2.5 font-medium">Agente IA</th>

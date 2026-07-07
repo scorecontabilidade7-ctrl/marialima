@@ -131,8 +131,8 @@ export default function PermissionsManagement() {
   const getUserStores  = (uid: string) => userStores?.filter((s) => s.user_id === uid) ?? [];
 
   return (
-    <div className="h-full w-full overflow-y-auto overflow-x-hidden space-y-6 max-w-7xl mx-auto p-4 md:p-8">
-      <div className="flex flex-col md:flex-row md:items-center gap-4">
+    <div className="h-full w-full flex flex-col space-y-6 max-w-7xl mx-auto p-4 md:p-8 overflow-hidden">
+      <div className="flex flex-col md:flex-row md:items-center gap-4 shrink-0">
         <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} className="shrink-0">
           <ArrowLeft className="w-5 h-5" />
         </Button>
@@ -142,18 +142,18 @@ export default function PermissionsManagement() {
         </div>
       </div>
 
-      <Card className="border border-border/60 w-full overflow-hidden">
-        <CardHeader className="pb-3">
+      <Card className="border border-border/60 w-full flex-1 flex flex-col min-h-0 overflow-hidden">
+        <CardHeader className="pb-3 shrink-0">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
             <Shield className="w-4 h-4 text-primary" />
             Usuários
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="w-full overflow-x-auto">
+        <CardContent className="p-0 flex-1 overflow-auto relative">
+          <div className="w-full min-w-max">
             <table className="w-full text-sm whitespace-nowrap">
-              <thead>
-                <tr className="bg-sidebar text-sidebar-foreground">
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-sidebar text-sidebar-foreground shadow-sm">
                   <th className="text-left px-4 py-2.5 font-medium">Usuário</th>
                   <th className="text-left px-4 py-2.5 font-medium">Vínculo Vendedor</th>
                   <th className="text-left px-4 py-2.5 font-medium">Papéis</th>
