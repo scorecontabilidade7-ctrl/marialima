@@ -1,4 +1,4 @@
-import { BarChart3, Target, Settings, LogIn, LogOut, Sun, Moon, ClipboardList } from "lucide-react";
+import { BarChart3, Target, Settings, LogIn, LogOut, Sun, Moon, ClipboardList, Package } from "lucide-react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
@@ -92,6 +92,12 @@ export default function Sidebar() {
               label="Monitoramento"
               isActive={location.pathname === "/monitoramento-acoes"}
               onClick={() => navigate("/monitoramento-acoes")}
+            />
+            <TooltipItem
+              icon={Package}
+              label="Estoque"
+              isActive={location.pathname === "/estoque"}
+              onClick={() => navigate("/estoque")}
             />
           </>
         )}

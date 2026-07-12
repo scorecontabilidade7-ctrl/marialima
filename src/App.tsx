@@ -16,6 +16,7 @@ import PermissionsManagement from "./pages/admin/PermissionsManagement.tsx";
 import VendedoresManagement from "./pages/admin/VendedoresManagement.tsx";
 import SellerProfile from "./pages/SellerProfile.tsx";
 import MonitoramentoAcoes from "./pages/MonitoramentoAcoes.tsx";
+import EstoqueDashboard from "./pages/EstoqueDashboard.tsx";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,8 @@ const App = () => (
             <Route path="/itapipoca" element={<Index store="itapipoca" />} />
             <Route path="/vendedor/:name" element={<SellerProfile />} />
             <Route path="/monitoramento-acoes" element={<MonitoramentoAcoes />} />
+            <Route path="/estoque" element={<EstoqueDashboard />} />
+
             
             <Route element={<AdminGuard />}>
               <Route path="/admin" element={<AdminDashboard />} />
