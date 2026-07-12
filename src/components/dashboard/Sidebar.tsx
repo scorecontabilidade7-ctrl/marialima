@@ -1,4 +1,4 @@
-import { BarChart3, Target, Settings, LogIn, LogOut, Sun, Moon } from "lucide-react";
+import { BarChart3, Target, Settings, LogIn, LogOut, Sun, Moon, ClipboardList } from "lucide-react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
@@ -86,6 +86,12 @@ export default function Sidebar() {
               label="Metas"
               isActive={isDashboard && view === "metas"}
               onClick={() => navigate(`${targetPath}?view=metas`)}
+            />
+            <TooltipItem
+              icon={ClipboardList}
+              label="Monitoramento"
+              isActive={location.pathname === "/monitoramento-acoes"}
+              onClick={() => navigate("/monitoramento-acoes")}
             />
           </>
         )}
