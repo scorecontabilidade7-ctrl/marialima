@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS public.marialima_monitoramento_acoes (
   end_date DATE NOT NULL,
   target_value NUMERIC NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  created_by UUID REFERENCES auth.users(id)
+  created_by UUID REFERENCES auth.users(id) DEFAULT auth.uid()
 );
 
 ALTER TABLE public.marialima_monitoramento_acoes ENABLE ROW LEVEL SECURITY;
