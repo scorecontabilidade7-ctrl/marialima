@@ -223,3 +223,49 @@ export function useDataExtracao() {
     staleTime: 5 * 60 * 1000,
   });
 }
+
+export function useTopClients(store: "sobral" | "itapipoca", filters: SalesFilters) {
+  return useQuery({
+    queryKey: ["top-clients", store, filters],
+    queryFn: async () => {
+      const clienteId = STORE_CLIENT_IDS[store];
+      if (!clienteId) return [];
+
+      let query = gigatechSupabase
+        .from("gigatech_vendedores")
+        .select("nome_cliente, valor_total")
+        .eq("cliente_id", clienteId)
+        .limit(100000);
+
+      if (filters.dataInicio || filters.dataFim) {
+        if (filters.dataInicio) query = query.gte("data_venda", filters.dataInicio);
+        if (filters.dataFim) query = query.lte("data_venda", filters.dataFim);
+      } else {
+        const start = `${filters.year}-${String(filters.month).padStart(2, "0")}-01`;
+        const lastDay = new Date(filters.year, filters.month, 0).getDate();
+        const end = `${filters.year}-${String(filters.month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+        query = query.gte("data_venda", start).lte("data_venda", end);
+      }
+
+      if (filters.vendedor && filters.vendedor !== "all") {
+        query = query.eq("nome_vendedor", filters.vendedor);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      const map: Record<string, number> = {};
+      (data || []).forEach((row) => {
+        const c = row.nome_cliente || "Desconhecido";
+        map[c] = (map[c] || 0) + (Number(row.valor_total) || 0);
+      });
+
+      return Object.entries(map)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([name, total]) => ({ name, total }));
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}

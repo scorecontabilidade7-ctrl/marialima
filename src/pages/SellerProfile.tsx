@@ -156,21 +156,31 @@ export default function SellerProfile() {
   }, [myVendas]);
 
   // ── Top departments ───────────────────────────────────────────────────────
+  const monthVendaNums = useMemo(
+    () => new Set(monthVendas.map((v) => v.numero_venda)),
+    [monthVendas]
+  );
+
+  const monthDetalhada = useMemo(
+    () => (data?.detalhada || []).filter((d) => monthVendaNums.has(d.venda)),
+    [data, monthVendaNums]
+  );
+
   const topDepts = useMemo(() => {
     const map: Record<string, number> = {};
-    myDetalhada.forEach((d) => {
+    monthDetalhada.forEach((d) => {
       if (d.departamento) map[d.departamento] = (map[d.departamento] || 0) + d.subtotal;
     });
     return Object.entries(map)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 6)
       .map(([name, total]) => ({ name, total }));
-  }, [myDetalhada]);
+  }, [monthDetalhada]);
 
   // ── Top clients ───────────────────────────────────────────────────────────
   const topClients = useMemo(() => {
     const map: Record<string, { total: number; count: number }> = {};
-    myVendas.forEach((v) => {
+    monthVendas.forEach((v) => {
       const c = v.cliente || "Desconhecido";
       if (!map[c]) map[c] = { total: 0, count: 0 };
       map[c].total += v.valor_total;
@@ -180,19 +190,19 @@ export default function SellerProfile() {
       .sort((a, b) => b[1].total - a[1].total)
       .slice(0, 5)
       .map(([name, d]) => ({ name, ...d }));
-  }, [myVendas]);
+  }, [monthVendas]);
 
   // ── Tipo de venda ─────────────────────────────────────────────────────────
   const tiposVenda = useMemo(() => {
     const map: Record<string, number> = {};
-    myVendas.forEach((v) => {
+    monthVendas.forEach((v) => {
       const t = v.tipo_venda || "Outros";
       map[t] = (map[t] || 0) + v.valor_total;
     });
     return Object.entries(map)
       .sort((a, b) => b[1] - a[1])
       .map(([tipo, total]) => ({ tipo, total }));
-  }, [myVendas]);
+  }, [monthVendas]);
 
   // ── Goal performance ──────────────────────────────────────────────────────
   const metas = goalData

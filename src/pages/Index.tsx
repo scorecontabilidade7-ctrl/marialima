@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight, HelpCircle, Filter } from "lucide-react";
-import { useSalesData, useDataExtracao } from "@/hooks/useSalesData";
+import { useSalesData, useDataExtracao, useTopClients } from "@/hooks/useSalesData";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserAccess } from "@/hooks/useUserAccess";
 import KPICards from "@/components/dashboard/KPICards";
@@ -118,6 +118,14 @@ export default function Index({ store = "sobral" }: IndexProps) {
 
   const targetYearMonth = `${selectedMonth.year}-${String(selectedMonth.month).padStart(2, "0")}`;
   const { data: goalData } = useCurrentMonthGoals(store, targetYearMonth);
+  const { data: topClients } = useTopClients(store, {
+    year: selectedMonth.year,
+    month: selectedMonth.month,
+    vendedor: filters.vendedor,
+    departamento: filters.departamento,
+    dataInicio: filters.dataInicio,
+    dataFim: filters.dataFim,
+  });
 
   const dynamicRanking = useDynamicCommissions(
     data?.ranking ?? [],
@@ -558,6 +566,7 @@ export default function Index({ store = "sobral" }: IndexProps) {
                 <DepartmentChart
                   departamentos={data?.departamentos ?? []}
                   totalVendas={data?.kpis?.total_vendas ?? 0}
+                  topClients={topClients}
                 />
               </div>
 
