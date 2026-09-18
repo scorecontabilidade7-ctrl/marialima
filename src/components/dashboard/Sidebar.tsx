@@ -52,9 +52,8 @@ export default function Sidebar() {
   const [searchParams] = useSearchParams();
   const { theme, toggle } = useTheme();
 
-  const isDashboard = location.pathname === "/" || location.pathname === "/itapipoca";
+  const isDashboard = location.pathname === "/" || location.pathname === "/itapipoca" || location.pathname === "/consolidado";
   const view = searchParams.get("view") || "cockpit";
-  const targetPath = isDashboard ? location.pathname : "/";
   const sellerPath = isSeller && profileData?.nome_vendedor ? `/vendedor/${encodeURIComponent(profileData.nome_vendedor)}` : null;
 
   return (
@@ -79,13 +78,19 @@ export default function Sidebar() {
               icon={BarChart3}
               label="Cockpit"
               isActive={isDashboard && view === "cockpit"}
-              onClick={() => navigate(`${targetPath}?view=cockpit`)}
+              onClick={() => {
+                const cockpitPath = location.pathname === "/itapipoca" ? "/itapipoca" : location.pathname === "/consolidado" ? "/consolidado" : "/";
+                navigate(`${cockpitPath}?view=cockpit`);
+              }}
             />
             <TooltipItem
               icon={Target}
               label="Metas"
               isActive={isDashboard && view === "metas"}
-              onClick={() => navigate(`${targetPath}?view=metas`)}
+              onClick={() => {
+                const metasPath = location.pathname === "/itapipoca" ? "/itapipoca" : "/";
+                navigate(`${metasPath}?view=metas`);
+              }}
             />
             <TooltipItem
               icon={ClipboardList}

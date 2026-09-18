@@ -7,6 +7,7 @@ import { MapPin, TrendingUp, BarChart3, ArrowRight, Lock } from "lucide-react";
 const STORE_ROUTES: Record<Store, string> = {
   sobral: "/",
   itapipoca: "/itapipoca",
+  consolidado: "/consolidado",
 };
 
 export default function Welcome() {

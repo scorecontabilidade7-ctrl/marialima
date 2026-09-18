@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ChevronLeft, ChevronRight, HelpCircle, Filter } from "lucide-react";
+import { ChevronLeft, ChevronRight, HelpCircle, Filter, FileDown, Loader2, ArrowLeftRight } from "lucide-react";
 import { useSalesData, useDataExtracao, useTopClients } from "@/hooks/useSalesData";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserAccess } from "@/hooks/useUserAccess";
@@ -11,9 +11,13 @@ import SalesTimeline from "@/components/dashboard/SalesTimeline";
 import DepartmentChart from "@/components/dashboard/DepartmentChart";
 import Sidebar from "@/components/dashboard/Sidebar";
 import MetasTracking, { META_OPTIONS, type MetaKey } from "@/components/dashboard/MetasTracking";
+import MonthlyComparisonView from "@/components/dashboard/MonthlyComparisonView";
 import { useCurrentMonthGoals } from "@/hooks/useMonthlyGoals";
 import { useDynamicCommissions } from "@/hooks/useDynamicCommissions";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { generateMonthlyPdfReport } from "@/lib/pdfGenerator";
 import {
   Dialog,
   DialogContent,
@@ -36,10 +40,11 @@ import { BR_TIME_ZONE, formatTimeHMInTimeZone, getDatePartsInTimeZone } from "@/
 const STORE_LABELS: Record<string, string> = {
   sobral: "Sobral",
   itapipoca: "Itapipoca",
+  consolidado: "Consolidado (Sobral + Itapipoca)",
 };
 
 interface IndexProps {
-  store?: "sobral" | "itapipoca";
+  store?: "sobral" | "itapipoca" | "consolidado";
 }
 
 export default function Index({ store = "sobral" }: IndexProps) {
@@ -56,9 +61,22 @@ export default function Index({ store = "sobral" }: IndexProps) {
   const [filters, setFilters] = useState(() => {
     const saved = sessionStorage.getItem("dashboardFilters");
     if (saved) {
-      try { return JSON.parse(saved); } catch(e) {}
+      try {
+        const parsed = JSON.parse(saved);
+        const vendedores = Array.isArray(parsed.vendedores)
+          ? parsed.vendedores
+          : (parsed.vendedor && parsed.vendedor !== "all" ? [parsed.vendedor] : []);
+        return {
+          vendedores,
+          vendedor: parsed.vendedor || "all",
+          departamento: parsed.departamento || "all",
+          dataInicio: parsed.dataInicio || "",
+          dataFim: parsed.dataFim || "",
+        };
+      } catch(e) {}
     }
     return {
+      vendedores: [] as string[],
       vendedor: "all",
       departamento: "all",
       dataInicio: "",
@@ -73,6 +91,7 @@ export default function Index({ store = "sobral" }: IndexProps) {
 
   const clearFilters = () => {
     setFilters({
+      vendedores: [],
       vendedor: "all",
       departamento: "all",
       dataInicio: "",
@@ -81,7 +100,8 @@ export default function Index({ store = "sobral" }: IndexProps) {
   };
 
   const hasActiveFilters = 
-    filters.vendedor !== "all" || 
+    (filters.vendedores && filters.vendedores.length > 0 && !filters.vendedores.includes("all")) ||
+    (filters.vendedor !== "all" && filters.vendedor !== "") || 
     filters.departamento !== "all" || 
     filters.dataInicio !== "" || 
     filters.dataFim !== "";
@@ -101,6 +121,7 @@ export default function Index({ store = "sobral" }: IndexProps) {
   const { data, isLoading, error, dataUpdatedAt } = useSalesData(store, {
     year: selectedMonth.year,
     month: selectedMonth.month,
+    vendedores: filters.vendedores,
     vendedor: filters.vendedor,
     departamento: filters.departamento,
     dataInicio: filters.dataInicio,
@@ -121,6 +142,7 @@ export default function Index({ store = "sobral" }: IndexProps) {
   const { data: topClients } = useTopClients(store, {
     year: selectedMonth.year,
     month: selectedMonth.month,
+    vendedores: filters.vendedores,
     vendedor: filters.vendedor,
     departamento: filters.departamento,
     dataInicio: filters.dataInicio,
@@ -133,12 +155,126 @@ export default function Index({ store = "sobral" }: IndexProps) {
     commissionMode === "dinamica"
   );
 
+  const processedBaseData = useMemo(() => {
+    if (!data) return undefined;
+    if (commissionMode !== "dinamica") return data;
+    const total_comissoes = dynamicRanking.reduce((s, r) => s + r.comissao, 0);
+    return {
+      ...data,
+      kpis: { ...data.kpis, total_comissoes },
+      ranking: dynamicRanking,
+    };
+  }, [data, commissionMode, dynamicRanking]);
+
   const kpis = useMemo(() => {
     if (!data?.kpis) return data?.kpis;
     if (commissionMode !== "dinamica") return data.kpis;
     const total_comissoes = dynamicRanking.reduce((s, r) => s + r.comissao, 0);
     return { ...data.kpis, total_comissoes };
   }, [data?.kpis, commissionMode, dynamicRanking]);
+
+  // Modo Comparativo de Meses (Exclusivo da aba Cockpit e isolado do mês global do dashboard)
+  const [isComparingMonths, setIsComparingMonths] = useState(false);
+  const [compareBaseMonth, setCompareBaseMonth] = useState<{ year: number; month: number }>(selectedMonth);
+  const [compareTargetMonth, setCompareTargetMonth] = useState<{ year: number; month: number }>(() => {
+    if (selectedMonth.month === 1) return { year: selectedMonth.year - 1, month: 12 };
+    return { year: selectedMonth.year, month: selectedMonth.month - 1 };
+  });
+
+  const handleOpenComparison = () => {
+    setCompareBaseMonth(selectedMonth);
+    setCompareTargetMonth(
+      selectedMonth.month === 1
+        ? { year: selectedMonth.year - 1, month: 12 }
+        : { year: selectedMonth.year, month: selectedMonth.month - 1 }
+    );
+    setIsComparingMonths(true);
+  };
+
+  const handleCloseComparison = () => {
+    setIsComparingMonths(false);
+  };
+
+  // Desativa modo comparativo caso o usuário saia do Cockpit
+  useEffect(() => {
+    if (activeView !== "cockpit" && isComparingMonths) {
+      setIsComparingMonths(false);
+    }
+  }, [activeView, isComparingMonths]);
+
+  // Query para Mês 1 (Base) do comparador (se for diferente do selectedMonth do dashboard)
+  const isBaseSameAsDashboard =
+    compareBaseMonth.year === selectedMonth.year && compareBaseMonth.month === selectedMonth.month;
+
+  const { data: separateBaseData, isLoading: isSeparateBaseLoading } = useSalesData(
+    store,
+    {
+      year: compareBaseMonth.year,
+      month: compareBaseMonth.month,
+      vendedores: filters.vendedores,
+      vendedor: filters.vendedor,
+      departamento: filters.departamento,
+      dataInicio: filters.dataInicio,
+      dataFim: filters.dataFim,
+    }
+  );
+
+  const activeCompareBaseData = isBaseSameAsDashboard ? data : separateBaseData;
+  const isBaseLoading = isBaseSameAsDashboard ? isLoading : isSeparateBaseLoading;
+
+  // Query para Mês 2 (Comparado)
+  const { data: compareTargetData, isLoading: isCompareTargetLoading } = useSalesData(
+    store,
+    {
+      year: compareTargetMonth.year,
+      month: compareTargetMonth.month,
+      vendedores: filters.vendedores,
+      vendedor: filters.vendedor,
+      departamento: filters.departamento,
+      dataInicio: filters.dataInicio,
+      dataFim: filters.dataFim,
+    }
+  );
+
+  const baseTargetYearMonth = `${compareBaseMonth.year}-${String(compareBaseMonth.month).padStart(2, "0")}`;
+  const { data: compareBaseGoalData } = useCurrentMonthGoals(store, baseTargetYearMonth);
+
+  const compareTargetYearMonth = `${compareTargetMonth.year}-${String(compareTargetMonth.month).padStart(2, "0")}`;
+  const { data: compareTargetGoalData } = useCurrentMonthGoals(store, compareTargetYearMonth);
+
+  const compBaseDynamicRanking = useDynamicCommissions(
+    activeCompareBaseData?.ranking ?? [],
+    compareBaseGoalData,
+    commissionMode === "dinamica"
+  );
+
+  const compTargetDynamicRanking = useDynamicCommissions(
+    compareTargetData?.ranking ?? [],
+    compareTargetGoalData,
+    commissionMode === "dinamica"
+  );
+
+  const processedCompareBaseData = useMemo(() => {
+    if (!activeCompareBaseData) return undefined;
+    if (commissionMode !== "dinamica") return activeCompareBaseData;
+    const total_comissoes = compBaseDynamicRanking.reduce((s, r) => s + r.comissao, 0);
+    return {
+      ...activeCompareBaseData,
+      kpis: { ...activeCompareBaseData.kpis, total_comissoes },
+      ranking: compBaseDynamicRanking,
+    };
+  }, [activeCompareBaseData, commissionMode, compBaseDynamicRanking]);
+
+  const processedCompareTargetData = useMemo(() => {
+    if (!compareTargetData) return undefined;
+    if (commissionMode !== "dinamica") return compareTargetData;
+    const total_comissoes = compTargetDynamicRanking.reduce((s, r) => s + r.comissao, 0);
+    return {
+      ...compareTargetData,
+      kpis: { ...compareTargetData.kpis, total_comissoes },
+      ranking: compTargetDynamicRanking,
+    };
+  }, [compareTargetData, commissionMode, compTargetDynamicRanking]);
 
   const goToPrevMonth = () => {
     setSelectedMonth((prev) => {
@@ -168,8 +304,54 @@ export default function Index({ store = "sobral" }: IndexProps) {
     if (!authLoading && !accessLoading && session && !hasStoreAccess(store as any)) navigate("/welcome");
   }, [authLoading, accessLoading, session, store, hasStoreAccess, navigate, isSeller, profileData]);
 
-  const handleFilterChange = (key: string, value: string) => {
+  // Consolidado só é permitido no Cockpit; redireciona para Sobral se tentar acessar Metas
+  useEffect(() => {
+    if (store === "consolidado" && activeView === "metas") {
+      navigate("/?view=metas", { replace: true });
+    }
+  }, [store, activeView, navigate]);
+
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  const handleFilterChange = (key: string, value: any) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleDownloadPdf = async () => {
+    try {
+      setIsGeneratingPdf(true);
+      toast.loading("Gerando resumo mensal em PDF...", { id: "pdf-gen" });
+
+      const filterParts = [];
+      if (filters.vendedores && filters.vendedores.length > 0 && !filters.vendedores.includes("all")) {
+        filterParts.push(`Vendedores: ${filters.vendedores.join(", ")}`);
+      } else if (filters.vendedor && filters.vendedor !== "all") {
+        filterParts.push(`Vendedor: ${filters.vendedor}`);
+      }
+      if (filters.departamento && filters.departamento !== "all") {
+        filterParts.push(`Departamento: ${filters.departamento}`);
+      }
+      if (filters.dataInicio || filters.dataFim) {
+        filterParts.push(`Período: ${filters.dataInicio || "Início"} até ${filters.dataFim || "Hoje"}`);
+      }
+
+      await generateMonthlyPdfReport({
+        store,
+        selectedMonth,
+        kpis,
+        ranking: dynamicRanking,
+        goalData,
+        commissionMode,
+        activeFiltersDesc: filterParts.length > 0 ? filterParts.join(" | ") : undefined,
+      });
+
+      toast.success("Resumo mensal em PDF baixado com sucesso!", { id: "pdf-gen" });
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Erro ao gerar resumo em PDF", { id: "pdf-gen" });
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   };
 
 
@@ -201,41 +383,59 @@ export default function Index({ store = "sobral" }: IndexProps) {
   }
 
   return (
-    <div className="flex-1 min-w-0 flex flex-col h-full">
+    <div className="flex-1 flex flex-col min-h-0 bg-background overflow-hidden">
       {/* Header */}
       <header className="border-b border-border/60 px-4 sm:px-6 py-3 flex flex-col md:flex-row items-center justify-between shrink-0 bg-card gap-3 md:gap-0">
         <div className="hidden md:block">
           <div className="flex items-baseline gap-2">
             <h1 className="text-base font-bold text-foreground tracking-tight">Dashboard de Vendas</h1>
             <span className="text-base font-light text-muted-foreground/50">|</span>
-            <span className="text-sm font-semibold text-primary">Maria Lima</span>
+            <span className="text-sm font-semibold text-primary">
+              {store === "consolidado" ? "Maria Lima (Consolidado)" : "Maria Lima"}
+            </span>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Análise de vendedores, departamentos e comissões em tempo real.
+            {store === "consolidado"
+              ? "Visão conjunta de Sobral + Itapipoca em tempo real."
+              : `Análise de vendedores, departamentos e comissões da loja ${STORE_LABELS[store] || store}.`}
           </p>
         </div>
         {/* Store switcher */}
-        <div className="flex w-full md:w-auto items-center border border-border rounded-lg overflow-hidden text-xs font-medium">
+        <div className="flex w-full md:w-auto items-center border border-border rounded-lg overflow-hidden text-xs font-medium bg-secondary/40 p-0.5 gap-0.5">
           <button
-            onClick={() => navigate("/")}
-            className={`flex-1 md:flex-none px-3.5 py-2 md:py-1.5 transition-colors ${
+            onClick={() => navigate(activeView === "metas" ? "/?view=metas" : "/")}
+            className={`flex-1 md:flex-none px-3.5 py-1.5 rounded-md transition-all ${
               store === "sobral"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-secondary"
+                ? "bg-primary text-primary-foreground shadow-sm font-semibold"
+                : "text-muted-foreground hover:text-foreground hover:bg-background/60"
             }`}
           >
             Sobral
           </button>
           <button
-            onClick={() => navigate("/itapipoca")}
-            className={`flex-1 md:flex-none px-3.5 py-2 md:py-1.5 transition-colors ${
+            onClick={() => navigate(activeView === "metas" ? "/itapipoca?view=metas" : "/itapipoca")}
+            className={`flex-1 md:flex-none px-3.5 py-1.5 rounded-md transition-all ${
               store === "itapipoca"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-secondary"
+                ? "bg-primary text-primary-foreground shadow-sm font-semibold"
+                : "text-muted-foreground hover:text-foreground hover:bg-background/60"
             }`}
           >
             Itapipoca
           </button>
+          {activeView === "cockpit" && (
+            <button
+              onClick={() => navigate("/consolidado")}
+              className={`flex-1 md:flex-none px-3.5 py-1.5 rounded-md transition-all flex items-center justify-center gap-1.5 ${
+                store === "consolidado"
+                  ? "bg-primary text-primary-foreground shadow-sm font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-background/60"
+              }`}
+              title="Visão Consolidada: Sobral + Itapipoca"
+            >
+              <span>Consolidado</span>
+              <span className="text-[10px] opacity-75 hidden sm:inline">(Todas)</span>
+            </button>
+          )}
         </div>
         <div className="text-right hidden md:block">
             <div className="flex items-center justify-end gap-1.5">
@@ -409,6 +609,35 @@ export default function Index({ store = "sobral" }: IndexProps) {
                       </button>
                     </div>
                   </div>
+
+                  {/* Mobile Ações Cockpit: Comparar Meses & Baixar PDF */}
+                  {activeView === "cockpit" && (
+                    <div className="pt-4 border-t border-border/50 space-y-2">
+                      <Button
+                        onClick={() => {
+                          if (isComparingMonths) handleCloseComparison();
+                          else handleOpenComparison();
+                        }}
+                        variant={isComparingMonths ? "default" : "outline"}
+                        className="w-full h-11 gap-2 font-bold shadow-sm transition-all"
+                      >
+                        <ArrowLeftRight className="w-4 h-4" />
+                        <span>{isComparingMonths ? "Fechar Comparativo" : "Comparar Meses"}</span>
+                      </Button>
+                      <Button
+                        onClick={handleDownloadPdf}
+                        disabled={isGeneratingPdf || isLoading}
+                        className="w-full h-11 gap-2 bg-primary text-primary-foreground font-bold shadow-md hover:brightness-105 transition-all"
+                      >
+                        {isGeneratingPdf ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <FileDown className="w-4 h-4" />
+                        )}
+                        <span>Baixar Resumo do Mês (PDF)</span>
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </SheetContent>
             </Sheet>
@@ -538,6 +767,49 @@ export default function Index({ store = "sobral" }: IndexProps) {
                 </button>
               </div>
             </div>
+
+            {/* Botões Exclusivos da Aba Cockpit (Comparar Meses & Baixar PDF) */}
+            {activeView === "cockpit" && (
+              <>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold invisible block">Comparar</label>
+                  <Button
+                    onClick={() => {
+                      if (isComparingMonths) handleCloseComparison();
+                      else handleOpenComparison();
+                    }}
+                    variant={isComparingMonths ? "default" : "outline"}
+                    className={`h-9 gap-2 font-bold shadow-sm transition-all text-xs ${
+                      isComparingMonths
+                        ? "bg-primary text-primary-foreground border-primary shadow-md"
+                        : "border-border bg-secondary/50 text-foreground hover:bg-secondary hover:text-primary"
+                    }`}
+                    title="Comparar desempenho entre dois meses"
+                  >
+                    <ArrowLeftRight className="w-4 h-4" />
+                    <span>{isComparingMonths ? "Comparando Meses" : "Comparar Meses"}</span>
+                  </Button>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold invisible block">PDF</label>
+                  <Button
+                    onClick={handleDownloadPdf}
+                    disabled={isGeneratingPdf || isLoading}
+                    variant="outline"
+                    className="h-9 gap-2 border-primary/30 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground font-bold shadow-sm transition-all text-xs"
+                    title="Baixar Resumo do Mês em PDF"
+                  >
+                    {isGeneratingPdf ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <FileDown className="w-4 h-4" />
+                    )}
+                    <span>Baixar Resumo (PDF)</span>
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -557,6 +829,21 @@ export default function Index({ store = "sobral" }: IndexProps) {
             </div>
           ) : activeView === "metas" ? (
             <MetasTracking ranking={dynamicRanking} timeline={data?.timeline ?? []} selectedMeta={selectedMeta} onMetaChange={setSelectedMeta} store={store} selectedMonth={selectedMonth} />
+          ) : isComparingMonths ? (
+            <MonthlyComparisonView
+              store={store}
+              baseMonth={compareBaseMonth}
+              compareMonth={compareTargetMonth}
+              onBaseMonthChange={setCompareBaseMonth}
+              onCompareMonthChange={setCompareTargetMonth}
+              onClose={handleCloseComparison}
+              baseData={processedCompareBaseData}
+              compareData={processedCompareTargetData}
+              baseGoalData={compareBaseGoalData}
+              compareGoalData={compareTargetGoalData}
+              commissionMode={commissionMode}
+              isLoadingCompare={isBaseLoading || isCompareTargetLoading}
+            />
           ) : (
             <>
               <KPICards kpis={kpis} timeline={data?.timeline ?? []} />

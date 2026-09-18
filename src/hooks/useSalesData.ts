@@ -44,14 +44,19 @@ export interface SalesFilters {
   year: number;
   month: number;
   vendedor?: string;
+  vendedores?: string[];
   departamento?: string;
   dataInicio?: string;
   dataFim?: string;
 }
 
-const STORE_CLIENT_IDS: Record<string, string> = {
+const STORE_CLIENT_IDS: Record<string, string | string[]> = {
   sobral: "94759cb2-e37b-4b67-8f77-fb7ab251fff9",
   itapipoca: "567b7f9b-fbbb-4fda-8a2c-4c8fd99b9d72",
+  consolidado: [
+    "94759cb2-e37b-4b67-8f77-fb7ab251fff9",
+    "567b7f9b-fbbb-4fda-8a2c-4c8fd99b9d72",
+  ],
 };
 
 export interface Vendedor {
@@ -173,19 +178,29 @@ export function useRawSalesData(store: "sobral" | "itapipoca" = "sobral", seller
 }
 
 async function fetchDashboardData(store: string, filters: SalesFilters): Promise<DashboardData> {
-  const clienteId = STORE_CLIENT_IDS[store];
-  if (!clienteId) {
+  const targetClient = STORE_CLIENT_IDS[store];
+  if (!targetClient) {
     throw new Error(`Filial desconhecida ou não configurada: ${store}`);
   }
 
+  const isMultiStore = Array.isArray(targetClient);
+  const clienteId = isMultiStore ? null : (targetClient as string);
+  const clienteIds = isMultiStore ? (targetClient as string[]) : null;
+
+  const hasMultiSellers = filters.vendedores && filters.vendedores.length > 0 && !filters.vendedores.includes("all");
+  const pVendedores = hasMultiSellers ? filters.vendedores : null;
+  const pVendedor = !hasMultiSellers && filters.vendedor && filters.vendedor !== "all" ? filters.vendedor : null;
+
   const { data, error } = await gigatechSupabase.rpc("marialima_get_dashboard_data", {
     p_cliente_id: clienteId,
+    p_cliente_ids: clienteIds,
     p_year: filters.year,
     p_month: filters.month,
-    p_vendedor: filters.vendedor === "all" ? null : (filters.vendedor || null),
+    p_vendedor: pVendedor,
     p_departamento: filters.departamento === "all" ? null : (filters.departamento || null),
     p_data_inicio: filters.dataInicio || null,
     p_data_fim: filters.dataFim || null,
+    p_vendedores: pVendedores,
   });
 
   if (error) {
@@ -195,7 +210,7 @@ async function fetchDashboardData(store: string, filters: SalesFilters): Promise
   return data as DashboardData;
 }
 
-export function useSalesData(store: "sobral" | "itapipoca" = "sobral", filters: SalesFilters) {
+export function useSalesData(store: "sobral" | "itapipoca" | "consolidado" = "sobral", filters: SalesFilters) {
   return useQuery({
     queryKey: ["sales-data", store, filters],
     queryFn: () => fetchDashboardData(store, filters),
@@ -211,7 +226,10 @@ export function useDataExtracao() {
       const { data, error } = await gigatechSupabase
         .from("gigatech_vendedores")
         .select("data_extracao")
-        .in("cliente_id", [STORE_CLIENT_IDS.sobral, STORE_CLIENT_IDS.itapipoca])
+        .in("cliente_id", [
+          "94759cb2-e37b-4b67-8f77-fb7ab251fff9",
+          "567b7f9b-fbbb-4fda-8a2c-4c8fd99b9d72",
+        ])
         .not("data_extracao", "is", null)
         .order("data_extracao", { ascending: false })
         .limit(1)
@@ -224,18 +242,24 @@ export function useDataExtracao() {
   });
 }
 
-export function useTopClients(store: "sobral" | "itapipoca", filters: SalesFilters) {
+export function useTopClients(store: "sobral" | "itapipoca" | "consolidado", filters: SalesFilters) {
   return useQuery({
     queryKey: ["top-clients", store, filters],
     queryFn: async () => {
-      const clienteId = STORE_CLIENT_IDS[store];
-      if (!clienteId) return [];
+      const targetClient = STORE_CLIENT_IDS[store];
+      if (!targetClient) return [];
 
       let query = gigatechSupabase
         .from("gigatech_vendedores")
-        .select("nome_cliente, valor_total")
-        .eq("cliente_id", clienteId)
-        .limit(100000);
+        .select("nome_cliente, valor_total");
+
+      if (Array.isArray(targetClient)) {
+        query = query.in("cliente_id", targetClient);
+      } else {
+        query = query.eq("cliente_id", targetClient);
+      }
+
+      query = query.limit(100000);
 
       if (filters.dataInicio || filters.dataFim) {
         if (filters.dataInicio) query = query.gte("data_venda", filters.dataInicio);
@@ -247,7 +271,9 @@ export function useTopClients(store: "sobral" | "itapipoca", filters: SalesFilte
         query = query.gte("data_venda", start).lte("data_venda", end);
       }
 
-      if (filters.vendedor && filters.vendedor !== "all") {
+      if (filters.vendedores && filters.vendedores.length > 0 && !filters.vendedores.includes("all")) {
+        query = query.in("nome_vendedor", filters.vendedores);
+      } else if (filters.vendedor && filters.vendedor !== "all") {
         query = query.eq("nome_vendedor", filters.vendedor);
       }
 

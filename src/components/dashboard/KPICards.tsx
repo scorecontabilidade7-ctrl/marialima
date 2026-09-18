@@ -85,15 +85,15 @@ export default function KPICards({ kpis, timeline }: KPICardsProps) {
                 </p>
                 <div className="mt-1.5">
                   {kpi.trend > 0 ? (
-                    <span className="text-[11px] font-semibold text-emerald-600">
-                      ▲{kpi.trend}% período anterior
+                    <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                      ▲ +{kpi.trend}% no período
                     </span>
                   ) : kpi.trend < 0 ? (
                     <span className="text-[11px] font-semibold text-red-500">
-                      ▼{Math.abs(kpi.trend)}% período anterior
+                      ▼ {Math.abs(kpi.trend)}% no período
                     </span>
                   ) : (
-                    <span className="text-[11px] text-muted-foreground/60">sem variação</span>
+                    <span className="text-[11px] text-muted-foreground/60">ritmo estável</span>
                   )}
                 </div>
               </div>

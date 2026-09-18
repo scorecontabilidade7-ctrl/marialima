@@ -54,6 +54,54 @@ export function useCurrentMonthGoals(store = "sobral", targetYearMonth?: string)
   return useQuery({
     queryKey: ["monthly-goals", store, yearMonth],
     queryFn: async () => {
+      if (store === "consolidado") {
+        const { data: directData } = await supabase
+          .from("marialima_monthly_goals")
+          .select("*")
+          .eq("year_month", yearMonth)
+          .eq("store", "consolidado")
+          .maybeSingle();
+
+        if (directData) return directData as MonthlyGoal;
+
+        const { data: storeGoals } = await supabase
+          .from("marialima_monthly_goals")
+          .select("*")
+          .eq("year_month", yearMonth)
+          .in("store", ["sobral", "itapipoca"]);
+
+        const sobral = (storeGoals || []).find((g: any) => g.store === "sobral");
+        const itapipoca = (storeGoals || []).find((g: any) => g.store === "itapipoca");
+
+        const sMinima = sobral?.meta_minima ?? FALLBACK_GOALS.meta_minima;
+        const iMinima = itapipoca?.meta_minima ?? FALLBACK_GOALS.meta_minima;
+
+        const sTop1 = sobral?.meta_top1 ?? FALLBACK_GOALS.meta_top1;
+        const iTop1 = itapipoca?.meta_top1 ?? FALLBACK_GOALS.meta_top1;
+
+        const sTop2 = sobral?.meta_top2 ?? FALLBACK_GOALS.meta_top2;
+        const iTop2 = itapipoca?.meta_top2 ?? FALLBACK_GOALS.meta_top2;
+
+        const sMaster = sobral?.meta_master ?? FALLBACK_GOALS.meta_master;
+        const iMaster = itapipoca?.meta_master ?? FALLBACK_GOALS.meta_master;
+
+        const diasUteis = Math.max(sobral?.dias_uteis ?? 24, itapipoca?.dias_uteis ?? 24);
+
+        return {
+          id: yearMonth,
+          year_month: yearMonth,
+          store: "consolidado",
+          meta_minima: sMinima + iMinima,
+          meta_top1: sTop1 + iTop1,
+          meta_top2: sTop2 + iTop2,
+          meta_master: sMaster + iMaster,
+          dias_uteis: diasUteis,
+          distribution_mode: sobral?.distribution_mode || "uniform",
+          distribution_percentages: null,
+          created_at: new Date().toISOString(),
+        } as MonthlyGoal;
+      }
+
       const { data, error } = await supabase
         .from("marialima_monthly_goals")
         .select("*")

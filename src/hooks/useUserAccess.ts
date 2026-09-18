@@ -2,13 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 
-export type Store = "sobral" | "itapipoca";
+export type Store = "sobral" | "itapipoca" | "consolidado";
 
-export const ALL_STORES: Store[] = ["sobral", "itapipoca"];
+export const ALL_STORES: ("sobral" | "itapipoca")[] = ["sobral", "itapipoca"];
 
 export const STORE_LABELS: Record<Store, string> = {
   sobral: "Sobral",
   itapipoca: "Itapipoca",
+  consolidado: "Consolidado (Sobral + Itapipoca)",
 };
 
 export function useUserAccess() {
@@ -73,7 +74,13 @@ export function useUserAccess() {
     isSeller,
     profileData,
     accessibleStores,
-    hasStoreAccess: (store: Store) => isAdmin || accessibleStores.includes(store),
+    hasStoreAccess: (store: Store) => {
+      if (isAdmin) return true;
+      if (store === "consolidado") {
+        return accessibleStores.includes("sobral") || accessibleStores.includes("itapipoca");
+      }
+      return accessibleStores.includes(store);
+    },
     loading,
   };
 }

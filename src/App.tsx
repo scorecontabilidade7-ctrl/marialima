@@ -32,6 +32,7 @@ const App = () => (
           <Route element={<GlobalLayout />}>
             <Route path="/" element={<Index store="sobral" />} />
             <Route path="/itapipoca" element={<Index store="itapipoca" />} />
+            <Route path="/consolidado" element={<Index store="consolidado" />} />
             <Route path="/vendedor/:name" element={<SellerProfile />} />
             <Route path="/monitoramento-acoes" element={<MonitoramentoAcoes />} />
             <Route path="/estoque" element={<EstoqueDashboard />} />
