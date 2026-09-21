@@ -24,24 +24,37 @@ export default function VendedoresManagement() {
   const [isOpen, setIsOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   
-  const [formData, setFormData] = useState<{ id?: string; nome_vendedor: string; url_foto: string | null; loja?: string | null }>({
+  const [formData, setFormData] = useState<{
+    id?: string;
+    nome_vendedor: string;
+    url_foto: string | null;
+    loja?: string | null;
+    peso_meta: number;
+  }>({
     nome_vendedor: "",
     url_foto: null,
     loja: null,
+    peso_meta: 1,
   });
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  const openEdit = (config: { id: string; nome_vendedor: string; url_foto: string | null; loja?: string | null }) => {
-    setFormData({ id: config.id, nome_vendedor: config.nome_vendedor, url_foto: config.url_foto, loja: config.loja });
+  const openEdit = (config: any) => {
+    setFormData({
+      id: config.id,
+      nome_vendedor: config.nome_vendedor,
+      url_foto: config.url_foto,
+      loja: config.loja,
+      peso_meta: config.peso_meta !== undefined && config.peso_meta !== null ? Number(config.peso_meta) : 1,
+    });
     setSelectedFile(null);
     setPreviewUrl(config.url_foto);
     setIsOpen(true);
   };
 
   const openCreate = () => {
-    setFormData({ nome_vendedor: "", url_foto: null, loja: null });
+    setFormData({ nome_vendedor: "", url_foto: null, loja: null, peso_meta: 1 });
     setSelectedFile(null);
     setPreviewUrl(null);
     setIsOpen(true);
@@ -74,6 +87,7 @@ export default function VendedoresManagement() {
         nome_vendedor: formData.nome_vendedor,
         url_foto: photoUrl,
         loja: formData.loja,
+        peso_meta: Number(formData.peso_meta),
       });
 
       toast.success("Configuração salva com sucesso!");
@@ -105,7 +119,7 @@ export default function VendedoresManagement() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Gestão de Vendedores</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Configure as fotos e perfil dos vendedores para o Dashboard.
+            Configure as fotos, metas proporcionais (pesos) e perfil dos vendedores para o Dashboard.
           </p>
         </div>
       </div>
@@ -150,6 +164,21 @@ export default function VendedoresManagement() {
               <div className="space-y-2">
                 <Label>Loja</Label>
                 <Input value={formData.loja || ""} disabled placeholder="Loja será preenchida automaticamente" />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Peso na Meta (Padrão 1)</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={formData.peso_meta}
+                  onChange={(e) => setFormData({ ...formData, peso_meta: parseFloat(e.target.value) || 0 })}
+                  placeholder="1"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Vendedores com peso 0 não recebem meta. Se um tiver peso 1 e outro 0.5, a meta será distribuída de forma proporcional.
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -212,9 +241,20 @@ export default function VendedoresManagement() {
                 {config.loja && (
                   <span className="text-sm text-muted-foreground mb-2 capitalize">{config.loja}</span>
                 )}
-                <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-                  Vendedor
-                </span>
+                <div className="flex items-center gap-1.5 mt-2 flex-wrap justify-center">
+                  <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                    Vendedor
+                  </span>
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                      (config.peso_meta ?? 1) === 0
+                        ? "bg-muted text-muted-foreground border border-border"
+                        : "bg-secondary text-secondary-foreground border border-border"
+                    }`}
+                  >
+                    Peso: {config.peso_meta !== undefined && config.peso_meta !== null ? config.peso_meta : 1}
+                  </span>
+                </div>
               </div>
             </CardContent>
           </Card>

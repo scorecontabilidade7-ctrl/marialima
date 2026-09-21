@@ -6,6 +6,7 @@ export interface VendedorConfig {
   nome_vendedor: string;
   url_foto: string | null;
   loja: string | null;
+  peso_meta?: number | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -40,7 +41,18 @@ export function useUpsertVendedorConfig() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (config: { id?: string; nome_vendedor: string; url_foto: string | null; loja?: string | null }) => {
+    mutationFn: async (config: {
+      id?: string;
+      nome_vendedor: string;
+      url_foto: string | null;
+      loja?: string | null;
+      peso_meta?: number | null;
+    }) => {
+      const pesoMetaValue = config.peso_meta !== undefined && config.peso_meta !== null
+        ? Number(config.peso_meta)
+        : 1;
+
+      let result;
       if (config.id) {
         const { data, error } = await supabase
           .from("marialima_vendedores_config")
@@ -48,26 +60,44 @@ export function useUpsertVendedorConfig() {
             nome_vendedor: config.nome_vendedor,
             url_foto: config.url_foto,
             loja: config.loja,
+            peso_meta: pesoMetaValue,
             updated_at: new Date().toISOString()
           })
           .eq("id", config.id)
           .select()
           .single();
         if (error) throw error;
-        return data;
+        result = data;
       } else {
         const { data, error } = await supabase
           .from("marialima_vendedores_config")
           .insert({
             nome_vendedor: config.nome_vendedor,
             url_foto: config.url_foto,
-            loja: config.loja
+            loja: config.loja,
+            peso_meta: pesoMetaValue,
           })
           .select()
           .single();
         if (error) throw error;
-        return data;
+        result = data;
       }
+
+      // Sincroniza também na tabela multi_vendedores_config se existir
+      try {
+        await supabase
+          .from("multi_vendedores_config")
+          .update({
+            peso_meta: pesoMetaValue,
+            url_foto: config.url_foto,
+            updated_at: new Date().toISOString()
+          })
+          .ilike("nome_vendedor", config.nome_vendedor);
+      } catch (e) {
+        // Silencioso se não houver registro correspondente
+      }
+
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vendedoresConfig"] });

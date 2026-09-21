@@ -3,17 +3,37 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useRawSalesData, useSalesData } from "@/hooks/useSalesData";
 import { useCurrentMonthGoals } from "@/hooks/useMonthlyGoals";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, TrendingUp, ShoppingBag, Users, Award, DollarSign, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Progress } from "@/components/ui/progress";
+import {
+  ArrowLeft, TrendingUp, ShoppingBag, Users, Award, DollarSign,
+  RefreshCw, ChevronLeft, ChevronRight, Target, AlertTriangle, Layers
+} from "lucide-react";
 import { BR_TIME_ZONE, getDatePartsInTimeZone } from "@/lib/utils";
 import { calculateSingleDynamicCommission } from "@/hooks/useDynamicCommissions";
+import { usePAAnalysis, isSellerMatch, type PAFilters } from "@/hooks/usePAAnalysis";
 import {
   AreaChart, Area, BarChart, Bar, LabelList, ReferenceLine,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
 } from "recharts";
+import { useVendedoresConfig } from "@/hooks/useVendedoresConfig";
+import { useUserAccess } from "@/hooks/useUserAccess";
 
 const TEAL = "hsl(188, 55%, 40%)";
 const TEAL_LIGHT = "hsl(188, 48%, 88%)";
 const MONTH_NAMES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+const DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+export type MetaKey = "minima" | "top1" | "top2" | "master";
+type DistributionMode = "uniform" | "day" | "week";
+type WeekSpec = { label: string; days: Date[] };
+
+export const META_OPTIONS: { key: MetaKey; label: string }[] = [
+  { key: "minima", label: "Meta Mínima" },
+  { key: "top1",   label: "Top 1" },
+  { key: "top2",   label: "Top 2" },
+  { key: "master", label: "Master" },
+];
 
 function fmt(v: number) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -23,14 +43,72 @@ function fmtShort(v: number) {
   if (Math.abs(v) >= 1_000) return `R$ ${(v / 1_000).toFixed(1)}K`;
   return `R$ ${v.toFixed(0)}`;
 }
+function fmtPA(v: number) {
+  return (v || 0).toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
 function formatMobileLabel(value: number) {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `${(value / 1_000).toFixed(0)}k`;
   return value.toFixed(0);
 }
 
-import { useVendedoresConfig } from "@/hooks/useVendedoresConfig";
-import { useUserAccess } from "@/hooks/useUserAccess";
+function getWeeksOfMonth(year: number, monthIndex: number) {
+  const weeks: { label: string; days: Date[] }[] = [];
+  const firstDay = new Date(Date.UTC(year, monthIndex, 1));
+  const lastDay = new Date(Date.UTC(year, monthIndex + 1, 0));
+
+  let currentWeek: Date[] = [];
+  let weekNum = 1;
+
+  for (let d = new Date(firstDay); d <= lastDay; d.setUTCDate(d.getUTCDate() + 1)) {
+    const day = d.getUTCDay();
+    if (day === 0) continue;
+    currentWeek.push(new Date(d));
+    if (day === 6 || d.getUTCDate() === lastDay.getUTCDate()) {
+      weeks.push({ label: `Semana ${weekNum}`, days: [...currentWeek] });
+      currentWeek = [];
+      weekNum++;
+    }
+  }
+
+  return weeks;
+}
+
+function parsePercentArray(value: unknown, expectedLen?: number): number[] | null {
+  if (!Array.isArray(value)) return null;
+  const nums = value.map((v) => (typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN));
+  if (nums.some((n) => !Number.isFinite(n))) return null;
+  if (expectedLen != null && nums.length !== expectedLen) return null;
+  return nums;
+}
+
+function buildDayTargetsFromWeekdayPercents(weeks: WeekSpec[], metaMensal: number, weekdayPercents: number[]) {
+  const weekdayCounts = [0, 0, 0, 0, 0, 0];
+  for (const w of weeks) {
+    for (const d of w.days) {
+      const dow = d.getUTCDay();
+      if (dow >= 1 && dow <= 6) weekdayCounts[dow - 1] += 1;
+    }
+  }
+
+  const targets: Record<string, number> = {};
+  for (const w of weeks) {
+    for (const d of w.days) {
+      const dow = d.getUTCDay();
+      if (dow < 1 || dow > 6) continue;
+      const idx = dow - 1;
+      const count = weekdayCounts[idx] || 0;
+      const pct = weekdayPercents[idx] || 0;
+      const key = d.toISOString().slice(0, 10);
+      targets[key] = count > 0 ? (metaMensal * (pct / 100)) / count : 0;
+    }
+  }
+
+  return targets;
+}
 
 export default function SellerProfile() {
   const { name } = useParams<{ name: string }>();
@@ -110,6 +188,15 @@ export default function SellerProfile() {
   };
   const { data: dashboardData } = useSalesData(store, dashboardFilters);
 
+  const paFilters: PAFilters = useMemo(
+    () => ({
+      year: currentYear,
+      month: currentMonth,
+    }),
+    [currentYear, currentMonth]
+  );
+  const { data: paData } = usePAAnalysis(store, paFilters);
+
   const monthVendas = useMemo(
     () =>
       myVendas.filter((v) => {
@@ -123,8 +210,19 @@ export default function SellerProfile() {
   const totalMes = monthVendas.reduce((s, v) => s + v.valor_total, 0);
   const totalGeral = myVendas.reduce((s, v) => s + v.valor_total, 0);
   
+  const monthTicketMedio = monthVendas.length > 0 ? totalMes / monthVendas.length : 0;
   const ticketMedio = myVendas.length > 0 ? totalGeral / myVendas.length : 0;
   const numPedidos = myVendas.length;
+
+  const sellerPAItem = useMemo(() => {
+    if (!paData?.ranking) return null;
+    return paData.ranking.find((r) => isSellerMatch(r.vendedor, sellerName));
+  }, [paData?.ranking, sellerName]);
+
+  const sellerPA = sellerPAItem?.pa ?? 0;
+  const sellerItens = sellerPAItem?.total_itens ?? 0;
+  const storePA = paData?.kpis?.pa_loja ?? 0;
+  const paDiff = sellerPAItem?.diff_vs_loja ?? (sellerPA > 0 && storePA > 0 ? sellerPA - storePA : 0);
 
   // ── All sellers rank ──────────────────────────────────────────────────────
   const rank = useMemo(() => {
@@ -133,8 +231,25 @@ export default function SellerProfile() {
   }, [dashboardData, sellerName]);
 
   const sellerCount = Math.max(dashboardData?.ranking?.length || 1, 1);
+  const sellerConfig = configs?.find((c) => isSellerMatch(c.nome_vendedor, sellerName));
+  const sellerWeight = sellerConfig?.peso_meta !== undefined && sellerConfig?.peso_meta !== null ? Number(sellerConfig.peso_meta) : 1;
+
+  const totalWeight = useMemo(() => {
+    if (!dashboardData?.ranking || dashboardData.ranking.length === 0) return 1;
+    return dashboardData.ranking.reduce((acc, r) => {
+      const cfg = configs?.find((c) => isSellerMatch(c.nome_vendedor, r.vendedor));
+      const w = cfg?.peso_meta !== undefined && cfg?.peso_meta !== null ? Number(cfg.peso_meta) : 1;
+      return acc + w;
+    }, 0);
+  }, [dashboardData?.ranking, configs]);
+
+  const sellerRatio = totalWeight > 0 ? sellerWeight / totalWeight : (sellerCount > 0 ? 1 / sellerCount : 1);
+
   const comissaoFixaMes = monthVendas.reduce((s, v) => s + v.comissao_vendedor, 0);
-  const comissaoDinamicaMes = useMemo(() => calculateSingleDynamicCommission(totalMes, sellerCount, goalData), [totalMes, sellerCount, goalData]);
+  const comissaoDinamicaMes = useMemo(
+    () => calculateSingleDynamicCommission(totalMes, sellerCount, goalData, sellerRatio, sellerWeight),
+    [totalMes, sellerCount, goalData, sellerRatio, sellerWeight]
+  );
   const displayComissao = commissionMode === "dinamica" ? comissaoDinamicaMes : comissaoFixaMes;
 
   // ── Monthly history (last 12 months) ─────────────────────────────────────
@@ -207,10 +322,10 @@ export default function SellerProfile() {
   // ── Goal performance ──────────────────────────────────────────────────────
   const metas = goalData
     ? {
-        minima: goalData.meta_minima / sellerCount,
-        top1: goalData.meta_top1 / sellerCount,
-        top2: goalData.meta_top2 / sellerCount,
-        master: goalData.meta_master / sellerCount,
+        minima: sellerWeight === 0 ? 0 : goalData.meta_minima * sellerRatio,
+        top1: sellerWeight === 0 ? 0 : goalData.meta_top1 * sellerRatio,
+        top2: sellerWeight === 0 ? 0 : goalData.meta_top2 * sellerRatio,
+        master: sellerWeight === 0 ? 0 : goalData.meta_master * sellerRatio,
       }
     : { minima: 18000, top1: 22000, top2: 26000, master: 30000 };
 
@@ -220,6 +335,92 @@ export default function SellerProfile() {
     { label: "Top 2",       value: metas.top2,   color: "hsl(172 48% 42%)", perc: 0.015 },
     { label: "Master",      value: metas.master, color: "hsl(38 92% 50%)",  perc: 0.020 },
   ];
+
+  // ── Weekly individual goal tracking ──────────────────────────────────────
+  const [selectedMeta, setSelectedMeta] = useState<MetaKey>("minima");
+  const [useAdjustedMetaPerWeek, setUseAdjustedMetaPerWeek] = useState<Record<number, boolean>>({});
+
+  const { day: todayDay } = getDatePartsInTimeZone(now, BR_TIME_ZONE);
+  const todayUtc = new Date(Date.UTC(realYear, realMonth - 1, todayDay, 23, 59, 59, 999));
+  const DIAS_UTEIS_MES = goalData?.dias_uteis ?? 24;
+
+  const sellerSalesByDate = useMemo(() => {
+    const map: Record<string, number> = {};
+    monthVendas.forEach((v) => {
+      if (!v.data_venda) return;
+      map[v.data_venda] = (map[v.data_venda] || 0) + v.valor_total;
+    });
+    return map;
+  }, [monthVendas]);
+
+  const weeks = useMemo(() => getWeeksOfMonth(currentYear, currentMonth - 1), [currentYear, currentMonth]);
+
+  const distributionMode = ((goalData as any)?.distribution_mode as DistributionMode | undefined) ?? "uniform";
+  const distributionPercentages = (goalData as any)?.distribution_percentages as unknown;
+
+  const selectedSellerMonthlyGoal = metas[selectedMeta] ?? 0;
+
+  const weekPercents = useMemo(
+    () => (distributionMode === "week" ? parsePercentArray(distributionPercentages, weeks.length) : null),
+    [distributionMode, distributionPercentages, weeks.length],
+  );
+
+  const weekdayPercents = useMemo(
+    () => (distributionMode === "day" ? parsePercentArray(distributionPercentages, 6) : null),
+    [distributionMode, distributionPercentages],
+  );
+
+  const dayTargets = useMemo(
+    () => (weekdayPercents ? buildDayTargetsFromWeekdayPercents(weeks as WeekSpec[], selectedSellerMonthlyGoal, weekdayPercents) : null),
+    [weeks, selectedSellerMonthlyGoal, weekdayPercents],
+  );
+
+  const enrichedWeeks = useMemo(() => {
+    let accumulatedDeficit = 0;
+
+    return weeks.map((week, weekIndex) => {
+      const weekTotal = week.days.reduce((sum, d) => {
+        const key = d.toISOString().slice(0, 10);
+        return sum + (sellerSalesByDate[key] || 0);
+      }, 0);
+
+      const baseWeekMeta = sellerWeight <= 0
+        ? 0
+        : weekPercents
+        ? selectedSellerMonthlyGoal * (weekPercents[weekIndex] / 100)
+        : weekdayPercents
+        ? week.days.reduce((sum, d) => {
+            const dayOfWeek = d.getUTCDay();
+            if (dayOfWeek === 0) return sum;
+            const target = dayTargets?.[d.toISOString().slice(0, 10)];
+            return sum + (target ?? (selectedSellerMonthlyGoal * (weekdayPercents[dayOfWeek - 1] / 100)));
+          }, 0)
+        : (selectedSellerMonthlyGoal / DIAS_UTEIS_MES) * week.days.filter((d) => d.getUTCDay() !== 0).length;
+
+      const carriedDeficit = accumulatedDeficit;
+      const useAdjusted = !!useAdjustedMetaPerWeek[weekIndex];
+      const activeMeta = useAdjusted ? baseWeekMeta + carriedDeficit : baseWeekMeta;
+      const activePct = activeMeta > 0 ? Math.min((weekTotal / activeMeta) * 100, 100) : 0;
+
+      const isWeekEnded = week.days.every((d) => d.getTime() < todayUtc.getTime());
+
+      if (isWeekEnded) {
+        accumulatedDeficit = Math.max(0, activeMeta - weekTotal);
+      }
+
+      return {
+        ...week,
+        weekIndex,
+        weekTotal,
+        baseWeekMeta,
+        carriedDeficit,
+        activeMeta,
+        useAdjusted,
+        activePct,
+        isWeekEnded,
+      };
+    });
+  }, [weeks, sellerSalesByDate, selectedSellerMonthlyGoal, sellerWeight, DIAS_UTEIS_MES, todayUtc, weekPercents, weekdayPercents, dayTargets, useAdjustedMetaPerWeek]);
 
   if (isLoading) {
     return (
@@ -331,7 +532,7 @@ export default function SellerProfile() {
         </Card>
 
         {/* ── KPI strip ─────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           {[
             { 
               label: "Total no Mês",  
@@ -346,12 +547,25 @@ export default function SellerProfile() {
               sub: commissionMode === "dinamica" ? "dinâmica" : "fixa" 
             },
             { 
-              label: "Ticket Médio",     
-              value: fmt(ticketMedio), 
-              icon: TrendingUp,  
-              sub: "por pedido" 
+              label: "P.A Médio",     
+              value: sellerPA > 0 ? fmtPA(sellerPA) : "—", 
+              icon: Layers,  
+              sub: sellerPA > 0 
+                ? `${sellerItens} peças (${paDiff >= 0 ? "+" : ""}${fmtPA(paDiff)} vs loja)` 
+                : "peças / atend." 
             },
-            { label: "Pedidos no Mês",   value: String(monthVendas.length), icon: ShoppingBag, sub: `em ${selectedMonthLabel.toLowerCase()}` },
+            { 
+              label: "Ticket Médio",     
+              value: fmt(monthTicketMedio), 
+              icon: TrendingUp,  
+              sub: "por pedido no mês" 
+            },
+            { 
+              label: "Pedidos no Mês",   
+              value: String(monthVendas.length), 
+              icon: ShoppingBag, 
+              sub: `em ${selectedMonthLabel.toLowerCase()}` 
+            },
           ].map((kpi) => (
             <Card key={kpi.label} className="border-border bg-card shadow-sm overflow-hidden">
               <CardContent className="p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center gap-1.5 sm:gap-3">
@@ -479,6 +693,200 @@ export default function SellerProfile() {
             </CardContent>
           </Card>
         </div>
+
+        {/* ── Acompanhamento Semanal do Vendedor ─────────────────────────── */}
+        <Card className="border border-border bg-card shadow-sm overflow-hidden">
+          <CardHeader className="pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/40">
+            <div>
+              <div className="flex items-center gap-2">
+                <Target className="w-5 h-5 text-primary" />
+                <CardTitle className="text-sm sm:text-base font-bold text-foreground">
+                  Metas da Semana — Acompanhamento Individual
+                </CardTitle>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {sellerWeight <= 0
+                  ? "Este vendedor está configurado com Peso 0 (Isento de Metas)."
+                  : `Meta individual calculada com base no peso (${sellerWeight}) e dias úteis do mês (${DIAS_UTEIS_MES} dias).`}
+              </p>
+            </div>
+
+            {sellerWeight > 0 && (
+              <div className="flex items-center bg-secondary/50 p-1 rounded-lg border border-border/40 shrink-0">
+                {META_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.key}
+                    onClick={() => setSelectedMeta(opt.key)}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all duration-200 ${
+                      selectedMeta === opt.key
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </CardHeader>
+
+          <CardContent className="p-4 sm:p-6 space-y-4">
+            {sellerWeight <= 0 ? (
+              <div className="py-8 text-center bg-muted/20 rounded-xl border border-border/40">
+                <p className="text-sm font-medium text-muted-foreground">Vendedor isento de metas no período.</p>
+              </div>
+            ) : (
+              enrichedWeeks.map((week) => {
+                const {
+                  label, days, weekIndex, weekTotal, baseWeekMeta, carriedDeficit,
+                  activeMeta, useAdjusted, activePct, isWeekEnded
+                } = week;
+
+                const toggleAdjusted = (checked: boolean) => {
+                  setUseAdjustedMetaPerWeek((prev) => ({ ...prev, [weekIndex]: checked }));
+                };
+
+                const hasCarriedDeficit = carriedDeficit > 0;
+                const diff = weekTotal - activeMeta;
+                const isHit = diff >= 0;
+
+                return (
+                  <div key={label} className="border border-border/60 bg-muted/10 rounded-xl p-4 sm:p-5 shadow-sm transition-all hover:shadow-md">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: TEAL }} />
+                        <h4 className="text-base font-bold text-foreground">{label}</h4>
+                        <span className="text-xs text-muted-foreground">
+                          ({days[0]?.getUTCDate()}/{days[0]?.getUTCMonth() + 1} a {days[days.length - 1]?.getUTCDate()}/{days[days.length - 1]?.getUTCMonth() + 1})
+                        </span>
+                      </div>
+                      
+                      {weekTotal >= activeMeta && activeMeta > 0 ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs font-bold border border-emerald-300/40">
+                          🎯 Meta Superada! ({activePct.toFixed(0)}%)
+                        </span>
+                      ) : isWeekEnded ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 dark:bg-red-950/40 text-red-800 dark:text-red-300 text-xs font-bold border border-red-300/40">
+                          ❌ Faltou <span className="md:hidden">{fmtShort(activeMeta - weekTotal)}</span><span className="hidden md:inline">{fmt(activeMeta - weekTotal)}</span> ({activePct.toFixed(0)}%)
+                        </span>
+                      ) : weekTotal > 0 ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 text-xs font-bold border border-amber-300/40">
+                          🏃 Faltam <span className="md:hidden">{fmtShort(activeMeta - weekTotal)}</span><span className="hidden md:inline">{fmt(activeMeta - weekTotal)}</span> ({activePct.toFixed(0)}%)
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground text-xs font-medium border border-border/40">
+                          😴 Sem vendas na semana
+                        </span>
+                      )}
+                    </div>
+
+                    {hasCarriedDeficit && (
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 bg-amber-50/50 dark:bg-amber-950/20 p-3 rounded-lg border border-amber-200/50 dark:border-amber-800/50">
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-500 shrink-0" />
+                          <p className="text-xs font-medium text-amber-800 dark:text-amber-200">
+                            Esta semana inclui <strong className="font-bold">{fmt(carriedDeficit)}</strong> acumulados das semanas anteriores.
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <label htmlFor={`switch-seller-${weekIndex}`} className="text-xs font-semibold cursor-pointer select-none">
+                            Meta Ajustada
+                          </label>
+                          <Switch 
+                            id={`switch-seller-${weekIndex}`}
+                            checked={useAdjusted} 
+                            onCheckedChange={toggleAdjusted} 
+                            className="data-[state=checked]:bg-amber-500"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-4">
+                      <div className="bg-card rounded-lg p-2.5 sm:p-3 border border-border/60 flex flex-col justify-center min-w-0">
+                        <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1 truncate">Meta Semanal</p>
+                        <p className="text-base sm:text-lg font-bold text-foreground leading-none truncate">
+                          <span className="md:hidden">{fmtShort(activeMeta)}</span>
+                          <span className="hidden md:inline">{fmt(activeMeta)}</span>
+                        </p>
+                      </div>
+                      <div className="bg-card rounded-lg p-2.5 sm:p-3 border border-border/60 flex flex-col justify-center min-w-0">
+                        <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1 truncate">Realizado</p>
+                        <p className={`text-base sm:text-lg font-bold leading-none truncate ${isHit ? "text-emerald-600 dark:text-emerald-400" : isWeekEnded ? "text-red-600 dark:text-red-400" : "text-primary"}`}>
+                          <span className="md:hidden">{fmtShort(weekTotal)}</span>
+                          <span className="hidden md:inline">{fmt(weekTotal)}</span>
+                        </p>
+                      </div>
+                      <div className="bg-card rounded-lg p-2.5 sm:p-3 border border-border/60 col-span-2 sm:col-span-1 flex flex-col justify-center min-w-0">
+                        <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1 truncate">Diferença</p>
+                        <p className={`text-base sm:text-lg font-bold leading-none truncate ${isHit ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+                          {diff > 0 ? "+" : ""}
+                          <span className="md:hidden">{fmtShort(diff)}</span>
+                          <span className="hidden md:inline">{fmt(diff)}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <Progress value={activePct} className="h-2 mb-4" />
+
+                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                      {days.map((d) => {
+                        const key = d.toISOString().slice(0, 10);
+                        const dayValue = sellerSalesByDate[key] || 0;
+                        const isPast = d <= todayUtc;
+                        
+                        const dayMeta = (() => {
+                          if (distributionMode === "day" && dayTargets) {
+                            const originalDayTarget = dayTargets[key] || 0;
+                            const factor = baseWeekMeta > 0 ? (activeMeta / baseWeekMeta) : 1;
+                            return originalDayTarget * factor;
+                          }
+                          return days.length > 0 ? activeMeta / days.length : 0;
+                        })();
+
+                        const isDayHit = isPast && dayValue >= dayMeta && dayMeta > 0;
+                        const isDayMiss = isPast && !isDayHit;
+
+                        return (
+                          <div
+                            key={key}
+                            className={`rounded-lg p-2.5 text-center transition-colors ${
+                              isDayHit
+                                ? "bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-800/50"
+                                : isDayMiss
+                                ? "bg-red-50/50 dark:bg-red-950/10 border border-red-200/50 dark:border-red-800/50"
+                                : "bg-muted/30 border border-border/30"
+                            }`}
+                          >
+                            <p className="text-[11px] font-semibold text-muted-foreground mb-0.5">{DAY_NAMES[d.getUTCDay()]}</p>
+                            <p className="text-[10px] text-muted-foreground/60 mb-1.5">{d.getUTCDate()}/{d.getUTCMonth() + 1}</p>
+                            <div className="mb-1 text-[9px] text-muted-foreground font-medium uppercase tracking-wider">
+                              Meta: {fmtShort(dayMeta)}
+                            </div>
+                            <p className={`font-bold text-xs sm:text-sm leading-none ${
+                              isDayHit
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : isDayMiss
+                                ? dayValue > 0 ? "text-red-600 dark:text-red-400" : "text-red-500/50 dark:text-red-400/50"
+                                : "text-muted-foreground/40"
+                            }`}>
+                              {dayValue > 0 ? (
+                                <>
+                                  <span className="md:hidden">{fmtShort(dayValue)}</span>
+                                  <span className="hidden md:inline">{fmt(dayValue)}</span>
+                                </>
+                              ) : "—"}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
 
         {/* ── Row: Departamentos + Clientes ─────────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">

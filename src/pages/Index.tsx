@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { ChevronLeft, ChevronRight, HelpCircle, Filter, FileDown, Loader2, ArrowLeftRight } from "lucide-react";
 import { useSalesData, useDataExtracao, useTopClients } from "@/hooks/useSalesData";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,6 +12,7 @@ import DepartmentChart from "@/components/dashboard/DepartmentChart";
 import Sidebar from "@/components/dashboard/Sidebar";
 import MetasTracking, { META_OPTIONS, type MetaKey } from "@/components/dashboard/MetasTracking";
 import MonthlyComparisonView from "@/components/dashboard/MonthlyComparisonView";
+import PAAnalysisView from "@/components/dashboard/PAAnalysisView";
 import { useCurrentMonthGoals } from "@/hooks/useMonthlyGoals";
 import { useDynamicCommissions } from "@/hooks/useDynamicCommissions";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -133,8 +134,9 @@ export default function Index({ store = "sobral" }: IndexProps) {
   const { session, loading: authLoading } = useAuth();
   const { hasStoreAccess, loading: accessLoading, isSeller, profileData } = useUserAccess();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
-  const activeView = searchParams.get("view") || "cockpit";
+  const activeView = searchParams.get("view") || (location.pathname === "/pa" ? "pa" : "cockpit");
   const [selectedMeta, setSelectedMeta] = useState<MetaKey>("minima");
 
   const targetYearMonth = `${selectedMonth.year}-${String(selectedMonth.month).padStart(2, "0")}`;
@@ -388,14 +390,24 @@ export default function Index({ store = "sobral" }: IndexProps) {
       <header className="border-b border-border/60 px-4 sm:px-6 py-3 flex flex-col md:flex-row items-center justify-between shrink-0 bg-card gap-3 md:gap-0">
         <div className="hidden md:block">
           <div className="flex items-baseline gap-2">
-            <h1 className="text-base font-bold text-foreground tracking-tight">Dashboard de Vendas</h1>
+            <h1 className="text-base font-bold text-foreground tracking-tight">
+              {activeView === "pa"
+                ? "Análise de P.A"
+                : activeView === "metas"
+                ? "Acompanhamento de Metas"
+                : "Dashboard de Vendas"}
+            </h1>
             <span className="text-base font-light text-muted-foreground/50">|</span>
             <span className="text-sm font-semibold text-primary">
               {store === "consolidado" ? "Maria Lima (Consolidado)" : "Maria Lima"}
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {store === "consolidado"
+            {activeView === "pa"
+              ? store === "consolidado"
+                ? "Métricas de Peças por Atendimento consolidadas de Sobral + Itapipoca."
+                : `Métricas de Peças por Atendimento e volume de itens da loja ${STORE_LABELS[store] || store}.`
+              : store === "consolidado"
               ? "Visão conjunta de Sobral + Itapipoca em tempo real."
               : `Análise de vendedores, departamentos e comissões da loja ${STORE_LABELS[store] || store}.`}
           </p>
@@ -403,7 +415,10 @@ export default function Index({ store = "sobral" }: IndexProps) {
         {/* Store switcher */}
         <div className="flex w-full md:w-auto items-center border border-border rounded-lg overflow-hidden text-xs font-medium bg-secondary/40 p-0.5 gap-0.5">
           <button
-            onClick={() => navigate(activeView === "metas" ? "/?view=metas" : "/")}
+            onClick={() => {
+              const query = activeView !== "cockpit" ? `?view=${activeView}` : "";
+              navigate(`/${query}`);
+            }}
             className={`flex-1 md:flex-none px-3.5 py-1.5 rounded-md transition-all ${
               store === "sobral"
                 ? "bg-primary text-primary-foreground shadow-sm font-semibold"
@@ -413,7 +428,10 @@ export default function Index({ store = "sobral" }: IndexProps) {
             Sobral
           </button>
           <button
-            onClick={() => navigate(activeView === "metas" ? "/itapipoca?view=metas" : "/itapipoca")}
+            onClick={() => {
+              const query = activeView !== "cockpit" ? `?view=${activeView}` : "";
+              navigate(`/itapipoca${query}`);
+            }}
             className={`flex-1 md:flex-none px-3.5 py-1.5 rounded-md transition-all ${
               store === "itapipoca"
                 ? "bg-primary text-primary-foreground shadow-sm font-semibold"
@@ -422,9 +440,12 @@ export default function Index({ store = "sobral" }: IndexProps) {
           >
             Itapipoca
           </button>
-          {activeView === "cockpit" && (
+          {(activeView === "cockpit" || activeView === "pa") && (
             <button
-              onClick={() => navigate("/consolidado")}
+              onClick={() => {
+                const query = activeView !== "cockpit" ? `?view=${activeView}` : "";
+                navigate(`/consolidado${query}`);
+              }}
               className={`flex-1 md:flex-none px-3.5 py-1.5 rounded-md transition-all flex items-center justify-center gap-1.5 ${
                 store === "consolidado"
                   ? "bg-primary text-primary-foreground shadow-sm font-semibold"
@@ -815,7 +836,7 @@ export default function Index({ store = "sobral" }: IndexProps) {
 
         {/* Main content */}
         <main className="flex-1 overflow-auto px-4 md:px-6 py-5 space-y-5">
-          {isLoading ? (
+          {isLoading && activeView !== "pa" ? (
             <div className="space-y-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                 {Array.from({ length: 4 }).map((_, i) => (
@@ -827,6 +848,12 @@ export default function Index({ store = "sobral" }: IndexProps) {
                 <Skeleton className="h-[380px] rounded-lg" />
               </div>
             </div>
+          ) : activeView === "pa" ? (
+            <PAAnalysisView
+              store={store}
+              selectedMonth={selectedMonth}
+              filters={filters}
+            />
           ) : activeView === "metas" ? (
             <MetasTracking ranking={dynamicRanking} timeline={data?.timeline ?? []} selectedMeta={selectedMeta} onMetaChange={setSelectedMeta} store={store} selectedMonth={selectedMonth} />
           ) : isComparingMonths ? (
@@ -856,6 +883,12 @@ export default function Index({ store = "sobral" }: IndexProps) {
                   topClients={topClients}
                 />
               </div>
+
+              <PAAnalysisView
+                store={store}
+                selectedMonth={selectedMonth}
+                filters={filters}
+              />
 
               <SalesTimeline 
                 timeline={data?.timeline ?? []} 

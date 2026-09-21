@@ -3,10 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
-import { Target, TrendingUp, Award, Star, Trophy, AlertTriangle } from "lucide-react";
+import {
+  Target, AlertTriangle,
+} from "lucide-react";
 import { useCurrentMonthGoals } from "@/hooks/useMonthlyGoals";
 import { useVendedoresConfig } from "@/hooks/useVendedoresConfig";
-import type { RankingItem, TimelineItem } from "@/hooks/useSalesData";
+import { isSellerMatch } from "@/hooks/usePAAnalysis";
+import { type RankingItem, type TimelineItem } from "@/hooks/useSalesData";
 import { BR_TIME_ZONE, getDatePartsInTimeZone } from "@/lib/utils";
 
 export type MetaKey = "minima" | "top1" | "top2" | "master";
@@ -158,6 +161,40 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
   const totalRealized = sellerTotals.reduce((s, v) => s + v.total, 0);
   const sellerCount = Math.max(sellerTotals.length, 1);
 
+  const sellerWeights = useMemo(() => {
+    return sellerTotals.map((s) => {
+      const cfg = configs?.find((c) => isSellerMatch(c.nome_vendedor, s.name));
+      const peso = cfg?.peso_meta !== undefined && cfg?.peso_meta !== null ? Number(cfg.peso_meta) : 1;
+      return { name: s.name, peso };
+    });
+  }, [sellerTotals, configs]);
+
+  const totalWeight = useMemo(() => {
+    return sellerWeights.reduce((sum, item) => sum + item.peso, 0);
+  }, [sellerWeights]);
+
+  const getSellerMetas = (sellerName: string) => {
+    const sw = sellerWeights.find((w) => w.name === sellerName);
+    const peso = sw ? sw.peso : 1;
+    if (peso <= 0) {
+      return {
+        peso: 0,
+        minima: 0,
+        top1: 0,
+        top2: 0,
+        master: 0,
+      };
+    }
+    const ratio = totalWeight > 0 ? peso / totalWeight : 1 / sellerCount;
+    return {
+      peso,
+      minima: METAS_LOJA.minima * ratio,
+      top1: METAS_LOJA.top1 * ratio,
+      top2: METAS_LOJA.top2 * ratio,
+      master: METAS_LOJA.master * ratio,
+    };
+  };
+
   const METAS = useMemo(() => ({
     minima: METAS_LOJA.minima / sellerCount,
     top1: METAS_LOJA.top1 / sellerCount,
@@ -178,8 +215,7 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
   const distributionMode = ((goalData as any)?.distribution_mode as DistributionMode | undefined) ?? "uniform";
   const distributionPercentages = (goalData as any)?.distribution_percentages as unknown;
 
-  const metaMensalLoja = METAS_LOJA[selectedMeta];
-  const metaDiariaLoja = metaMensalLoja / DIAS_UTEIS_MES;
+  const activeMetaMensal = METAS_LOJA[selectedMeta];
 
   const weekPercents = useMemo(
     () => (distributionMode === "week" ? parsePercentArray(distributionPercentages, weeks.length) : null),
@@ -192,8 +228,8 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
   );
 
   const dayTargets = useMemo(
-    () => (weekdayPercents ? buildDayTargetsFromWeekdayPercents(weeks as WeekSpec[], metaMensalLoja, weekdayPercents) : null),
-    [weeks, metaMensalLoja, weekdayPercents],
+    () => (weekdayPercents ? buildDayTargetsFromWeekdayPercents(weeks as WeekSpec[], activeMetaMensal, weekdayPercents) : null),
+    [weeks, activeMetaMensal, weekdayPercents],
   );
 
   const diasUteisCorridos = useMemo(() => {
@@ -206,9 +242,6 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
     return count;
   }, [isCurrentMonth, todayDay, displayYear, displayMonth, DIAS_UTEIS_MES]);
 
-  const pctMinima = Math.min((totalRealized / METAS_LOJA[selectedMeta]) * 100, 100);
-  const projection = diasUteisCorridos > 0 ? (totalRealized / diasUteisCorridos) * DIAS_UTEIS_MES : 0;
-
   const [useAdjustedMetaPerWeek, setUseAdjustedMetaPerWeek] = useState<Record<number, boolean>>({});
 
   const enrichedWeeks = useMemo(() => {
@@ -220,35 +253,26 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
         return sum + (salesByDate[key] || 0);
       }, 0);
 
-      const baseWeekMeta = (() => {
-        if (distributionMode === "week" && weekPercents) {
-          const pct = weekPercents[weekIndex] ?? 0;
-          return metaMensalLoja * (pct / 100);
-        }
-        if (distributionMode === "day" && dayTargets) {
-          return week.days.reduce((s, d) => s + (dayTargets[d.toISOString().slice(0, 10)] || 0), 0);
-        }
-        return metaDiariaLoja * week.days.length;
-      })();
+      const baseWeekMeta = weekPercents
+        ? activeMetaMensal * (weekPercents[weekIndex] / 100)
+        : weekdayPercents
+        ? week.days.reduce((sum, d) => {
+            const dayOfWeek = d.getUTCDay();
+            if (dayOfWeek === 0) return sum;
+            const target = dayTargets?.[d.toISOString().slice(0, 10)];
+            return sum + (target ?? (activeMetaMensal * (weekdayPercents[dayOfWeek - 1] / 100)));
+          }, 0)
+        : (activeMetaMensal / DIAS_UTEIS_MES) * week.days.filter((d) => d.getUTCDay() !== 0).length;
 
-      const useAdjusted = useAdjustedMetaPerWeek[weekIndex] ?? true;
       const carriedDeficit = accumulatedDeficit;
-      const adjustedMeta = baseWeekMeta + carriedDeficit;
-      
-      const activeMeta = useAdjusted ? adjustedMeta : baseWeekMeta;
+      const useAdjusted = !!useAdjustedMetaPerWeek[weekIndex];
+      const activeMeta = useAdjusted ? baseWeekMeta + carriedDeficit : baseWeekMeta;
       const activePct = activeMeta > 0 ? Math.min((weekTotal / activeMeta) * 100, 100) : 0;
-      
-      const lastDayOfWeek = week.days[week.days.length - 1];
-      const isWeekEnded = lastDayOfWeek <= todayUtc;
-      
+
+      const isWeekEnded = week.days.every((d) => d.getTime() < todayUtc.getTime());
+
       if (isWeekEnded) {
-        if (weekTotal < activeMeta) {
-          accumulatedDeficit = activeMeta - weekTotal;
-        } else {
-          accumulatedDeficit = 0;
-        }
-      } else {
-        accumulatedDeficit = 0;
+        accumulatedDeficit = Math.max(0, activeMeta - weekTotal);
       }
 
       return {
@@ -257,47 +281,66 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
         weekTotal,
         baseWeekMeta,
         carriedDeficit,
-        adjustedMeta,
         activeMeta,
         useAdjusted,
         activePct,
         isWeekEnded,
       };
     });
-  }, [weeks, salesByDate, distributionMode, weekPercents, metaMensalLoja, dayTargets, metaDiariaLoja, useAdjustedMetaPerWeek, todayUtc]);
+  }, [weeks, salesByDate, activeMetaMensal, DIAS_UTEIS_MES, todayUtc, weekPercents, weekdayPercents, dayTargets, useAdjustedMetaPerWeek]);
 
   return (
-    <div className="space-y-5">
-      {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
-        {[
-          { label: "Meta Mínima (Loja)", value: METAS_LOJA.minima, sub: `Individual: ${formatBRL(METAS.minima)}`, icon: Target, color: "text-blue-500" },
-          { label: "Meta Top 1 (Loja)", value: METAS_LOJA.top1, sub: `Individual: ${formatBRL(METAS.top1)}`, icon: TrendingUp, color: "text-emerald-500" },
-          { label: "Meta Top 2 (Loja)", value: METAS_LOJA.top2, sub: `Individual: ${formatBRL(METAS.top2)}`, icon: Trophy, color: "text-purple-500" },
-          { label: "Meta Master (Loja)", value: METAS_LOJA.master, sub: `Individual: ${formatBRL(METAS.master)}`, icon: Star, color: "text-amber-500" },
-          { label: "Realizado (Loja)", value: totalRealized, sub: undefined, icon: Award, color: "text-primary" },
-        ].map((card) => (
-          <Card key={card.label} className="border border-border/60">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-muted-foreground font-medium">{card.label}</span>
-                <card.icon className={`w-4 h-4 ${card.color}`} />
-              </div>
-              <p className="text-xl font-bold tracking-tight">{formatBRL(card.value)}</p>
-              {card.sub && (
-                <p className="text-[10px] text-muted-foreground mt-0.5">{card.sub}</p>
-              )}
-              {card.label === "Realizado (Loja)" && (
-                <div className="mt-2">
-                  <Progress value={pctMinima} className="h-2" />
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    {pctMinima.toFixed(1)}% da {META_OPTIONS.find(m => m.key === selectedMeta)?.label} · Projeção: {formatBRLShort(projection)}
-                  </p>
+    <div className="space-y-6">
+      {/* ── Cards de Meta da Loja ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {META_OPTIONS.map((opt) => {
+          const isSelected = selectedMeta === opt.key;
+          const metaValue = METAS_LOJA[opt.key];
+          const pct = metaValue > 0 ? Math.min((totalRealized / metaValue) * 100, 100) : 0;
+          const diff = totalRealized - metaValue;
+          const isHit = diff >= 0;
+
+          return (
+            <Card
+              key={opt.key}
+              onClick={() => onMetaChange(opt.key)}
+              className={`cursor-pointer transition-all duration-200 ${
+                isSelected
+                  ? "border-primary shadow-md bg-card ring-1 ring-primary"
+                  : "border-border/60 hover:border-border hover:shadow-sm bg-card/60"
+              }`}
+            >
+              <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  {opt.label}
+                </CardTitle>
+                <div className={`p-1.5 rounded-md ${isSelected ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                  <Target className="w-4 h-4" />
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <div className="text-2xl font-bold">{formatBRL(metaValue)}</div>
+                  <div className="flex items-center justify-between text-xs mt-1">
+                    <span className="text-muted-foreground">Realizado: {formatBRL(totalRealized)}</span>
+                    <span className={`font-semibold ${isHit ? "text-emerald-600 dark:text-emerald-400" : "text-primary"}`}>
+                      {pct.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+
+                <Progress value={pct} className="h-2" />
+
+                <div className="text-xs flex items-center justify-between pt-1 border-t border-border/40">
+                  <span className="text-muted-foreground">Diferença</span>
+                  <span className={`font-semibold ${isHit ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
+                    {isHit ? "+" : ""}{formatBRL(diff)}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Vendas/Mês Diferença Table */}
@@ -320,13 +363,15 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
               </thead>
               <tbody>
                 {sellerTotals.map((seller, i) => {
+                  const sMetas = getSellerMetas(seller.name);
+                  const isZeroWeight = sMetas.peso <= 0;
                   const diffs = {
-                    minima: seller.total - METAS.minima,
-                    top1: seller.total - METAS.top1,
-                    top2: seller.total - METAS.top2,
-                    master: seller.total - METAS.master,
+                    minima: seller.total - sMetas.minima,
+                    top1: seller.total - sMetas.top1,
+                    top2: seller.total - sMetas.top2,
+                    master: seller.total - sMetas.master,
                   };
-                  const config = configs?.find((c) => c.nome_vendedor === seller.name);
+                  const config = configs?.find((c) => isSellerMatch(c.nome_vendedor, seller.name));
                   const photo = config?.url_foto;
                   return (
                     <tr
@@ -342,19 +387,36 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
                               : getInitials(seller.name)
                             }
                           </div>
-                          <span className="font-medium">{seller.name}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-medium">{seller.name}</span>
+                            {sMetas.peso !== 1 && (
+                              <span className={`text-[10px] px-1.5 py-0.2 rounded font-semibold ${isZeroWeight ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"}`}>
+                                Peso {sMetas.peso}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="text-right px-4 py-2.5 font-semibold">{formatBRL(seller.total)}</td>
-                      {(["minima", "top1", "top2", "master"] as const).map((key) => (
-                        <td
-                          key={key}
-                          className={`text-right px-4 py-2.5 font-semibold ${diffs[key] >= 0 ? "text-emerald-600" : "text-red-500"}`}
-                        >
-                          {diffs[key] >= 0 ? "+" : ""}
-                          {formatBRL(diffs[key])}
-                        </td>
-                      ))}
+                      {(["minima", "top1", "top2", "master"] as const).map((key) => {
+                        if (isZeroWeight) {
+                          return (
+                            <td key={key} className="text-right px-4 py-2.5 font-medium text-muted-foreground text-xs">
+                              Isento (Peso 0)
+                            </td>
+                          );
+                        }
+                        const isHit = diffs[key] >= 0;
+                        return (
+                          <td
+                            key={key}
+                            className={`text-right px-4 py-2.5 font-semibold ${isHit ? "text-emerald-600" : "text-red-500"}`}
+                          >
+                            {isHit ? "+" : ""}
+                            {formatBRL(diffs[key])}
+                          </td>
+                        );
+                      })}
                     </tr>
                   );
                 })}
@@ -388,7 +450,9 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
               </thead>
               <tbody>
                 {sellerTotals.map((seller, i) => {
-                  const config = configs?.find((c) => c.nome_vendedor === seller.name);
+                  const sMetas = getSellerMetas(seller.name);
+                  const isZeroWeight = sMetas.peso <= 0;
+                  const config = configs?.find((c) => isSellerMatch(c.nome_vendedor, seller.name));
                   const photo = config?.url_foto;
                   return (
                   <tr
@@ -404,11 +468,25 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
                             : getInitials(seller.name)
                           }
                         </div>
-                        <span className="font-medium">{seller.name}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-medium">{seller.name}</span>
+                          {sMetas.peso !== 1 && (
+                            <span className={`text-[10px] px-1.5 py-0.2 rounded font-semibold ${isZeroWeight ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"}`}>
+                              Peso {sMetas.peso}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
                     {(["minima", "top1", "top2", "master"] as const).map((key) => {
-                      const reached = seller.total >= METAS[key];
+                      if (isZeroWeight) {
+                        return (
+                          <td key={key} className="text-right px-4 py-2.5 font-medium text-muted-foreground text-xs">
+                            ISENTO
+                          </td>
+                        );
+                      }
+                      const reached = seller.total >= sMetas[key];
                       return (
                         <td key={key} className={`text-right px-4 py-2.5 font-semibold ${reached ? "text-emerald-600" : "text-red-500"}`}>
                           {reached ? "ATINGIDO" : "NÃO ALCANÇADO"}
@@ -427,13 +505,15 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
       {/* Mobile Unified Seller Cards */}
       <div className="block md:grid md:grid-cols-2 gap-4 md:hidden space-y-4 md:space-y-0">
         {sellerTotals.map((seller, i) => {
+          const sMetas = getSellerMetas(seller.name);
+          const isZeroWeight = sMetas.peso <= 0;
           const diffs = {
-            minima: seller.total - METAS.minima,
-            top1: seller.total - METAS.top1,
-            top2: seller.total - METAS.top2,
-            master: seller.total - METAS.master,
+            minima: seller.total - sMetas.minima,
+            top1: seller.total - sMetas.top1,
+            top2: seller.total - sMetas.top2,
+            master: seller.total - sMetas.master,
           };
-          const config = configs?.find((c) => c.nome_vendedor === seller.name);
+          const config = configs?.find((c) => isSellerMatch(c.nome_vendedor, seller.name));
           const photo = config?.url_foto;
           const metasKeys = [
             { key: "minima" as const, label: "Meta Mínima" },
@@ -459,7 +539,14 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
                       )}
                     </div>
                     <div>
-                      <p className="font-bold text-base text-foreground leading-none">{seller.name}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-bold text-base text-foreground leading-none">{seller.name}</p>
+                        {sMetas.peso !== 1 && (
+                          <span className={`text-[10px] px-1.5 py-0.2 rounded font-semibold ${isZeroWeight ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"}`}>
+                            Peso {sMetas.peso}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[11px] text-muted-foreground mt-1.5 uppercase tracking-wide font-medium">
                         Realizado: <span className="font-bold text-primary">{formatBRL(seller.total)}</span>
                       </p>
@@ -469,6 +556,16 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
                 
                 <div className="space-y-3">
                   {metasKeys.map(({ key, label }) => {
+                    if (isZeroWeight) {
+                      return (
+                        <div key={key} className="flex items-center justify-between text-xs">
+                          <span className="font-medium text-foreground">{label}</span>
+                          <span className="font-medium text-muted-foreground text-[10px] uppercase">
+                            Isento
+                          </span>
+                        </div>
+                      );
+                    }
                     const diff = diffs[key];
                     const reached = diff >= 0;
                     return (
@@ -500,7 +597,9 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
       <Card className="border border-border/60">
         <CardHeader className="pb-3">
           <div>
-            <CardTitle className="text-sm font-semibold">Acompanhamento Semanal</CardTitle>
+            <CardTitle className="text-sm font-semibold">
+              Acompanhamento Semanal da Loja
+            </CardTitle>
             <p className="text-xs text-muted-foreground mt-0.5">
               Meta de referência: <span className="font-semibold text-primary">{META_OPTIONS.find(m => m.key === selectedMeta)?.label}</span>
             </p>
@@ -526,15 +625,19 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
                     {label}
                   </h4>
                   {weekTotal >= activeMeta && activeMeta > 0 ? (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs font-bold border border-emerald-300/40">
                       🎯 Meta Superada! ({activePct.toFixed(0)}%)
                     </span>
+                  ) : isWeekEnded ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 dark:bg-red-950/40 text-red-800 dark:text-red-300 text-xs font-bold border border-red-300/40">
+                      ❌ Faltou <span className="md:hidden">{formatBRLShort(activeMeta - weekTotal)}</span><span className="hidden md:inline">{formatBRL(activeMeta - weekTotal)}</span> ({activePct.toFixed(0)}%)
+                    </span>
                   ) : weekTotal > 0 ? (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold">
-                      🏃 Faltou <span className="md:hidden">{formatBRLShort(activeMeta - weekTotal)}</span><span className="hidden md:inline">{formatBRL(activeMeta - weekTotal)}</span> ({activePct.toFixed(0)}%)
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 text-xs font-bold border border-amber-300/40">
+                      🏃 Faltam <span className="md:hidden">{formatBRLShort(activeMeta - weekTotal)}</span><span className="hidden md:inline">{formatBRL(activeMeta - weekTotal)}</span> ({activePct.toFixed(0)}%)
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground text-xs font-medium">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-muted-foreground text-xs font-medium border border-border/40">
                       😴 Sem vendas ainda
                     </span>
                   )}
@@ -572,14 +675,14 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
                   </div>
                   <div className="bg-muted/40 rounded-lg p-2.5 sm:p-3 border border-border/50 flex flex-col justify-center min-w-0">
                     <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1 truncate">Realizado</p>
-                    <p className={`text-base sm:text-xl font-bold leading-none truncate ${weekTotal >= activeMeta ? "text-emerald-600" : "text-primary"}`}>
+                    <p className={`text-base sm:text-xl font-bold leading-none truncate ${weekTotal >= activeMeta ? "text-emerald-600 dark:text-emerald-400" : isWeekEnded ? "text-red-600 dark:text-red-400" : "text-primary"}`}>
                       <span className="md:hidden">{formatBRLShort(weekTotal)}</span>
                       <span className="hidden md:inline">{formatBRL(weekTotal)}</span>
                     </p>
                   </div>
                   <div className="bg-muted/40 rounded-lg p-2.5 sm:p-3 border border-border/50 col-span-2 sm:col-span-1 flex flex-col justify-center min-w-0">
                     <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1 truncate">Diferença</p>
-                    <p className={`text-base sm:text-xl font-bold leading-none truncate ${weekTotal - activeMeta >= 0 ? "text-emerald-600" : "text-amber-600"}`}>
+                    <p className={`text-base sm:text-xl font-bold leading-none truncate ${weekTotal - activeMeta >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
                       {weekTotal - activeMeta > 0 ? "+" : ""}
                       <span className="md:hidden">{formatBRLShort(weekTotal - activeMeta)}</span>
                       <span className="hidden md:inline">{formatBRL(weekTotal - activeMeta)}</span>
@@ -606,13 +709,16 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
                       return days.length > 0 ? activeMeta / days.length : 0;
                     })();
 
+                    const isDayHit = isPast && dayValue >= dayMeta && dayMeta > 0;
+                    const isDayMiss = isPast && !isDayHit;
+
                     return (
                       <div
                         key={key}
                         className={`rounded-lg p-2.5 text-center transition-colors ${
-                          isPast && dayValue > 0
+                          isDayHit
                             ? "bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-800/50"
-                            : isPast
+                            : isDayMiss
                             ? "bg-red-50/50 dark:bg-red-950/10 border border-red-200/50 dark:border-red-800/50"
                             : "bg-muted/30 border border-border/30"
                         }`}
@@ -622,7 +728,13 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
                         <div className="mb-1 text-[9px] text-muted-foreground font-medium uppercase tracking-wider">
                           Meta: {formatBRLShort(dayMeta)}
                         </div>
-                        <p className={`font-bold text-sm leading-none ${dayValue > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/40"}`}>
+                        <p className={`font-bold text-sm leading-none ${
+                          isDayHit
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : isDayMiss
+                            ? dayValue > 0 ? "text-red-600 dark:text-red-400" : "text-red-500/50 dark:text-red-400/50"
+                            : "text-muted-foreground/40"
+                        }`}>
                           {dayValue > 0 ? (
                             <>
                               <span className="md:hidden">{formatBRLShort(dayValue)}</span>

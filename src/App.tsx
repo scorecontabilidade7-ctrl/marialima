@@ -31,6 +31,7 @@ const App = () => (
           <Route path="/welcome" element={<Welcome />} />
           <Route element={<GlobalLayout />}>
             <Route path="/" element={<Index store="sobral" />} />
+            <Route path="/pa" element={<Index store="sobral" />} />
             <Route path="/itapipoca" element={<Index store="itapipoca" />} />
             <Route path="/consolidado" element={<Index store="consolidado" />} />
             <Route path="/vendedor/:name" element={<SellerProfile />} />
