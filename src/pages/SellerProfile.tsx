@@ -6,6 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   ArrowLeft, TrendingUp, ShoppingBag, Users, Award, DollarSign,
   RefreshCw, ChevronLeft, ChevronRight, Target, AlertTriangle, Layers
 } from "lucide-react";
@@ -110,6 +117,31 @@ function buildDayTargetsFromWeekdayPercents(weeks: WeekSpec[], metaMensal: numbe
   return targets;
 }
 
+export function getDailyGoalFraction(dateStr: string, goalData: any) {
+  if (!goalData) return 0;
+  const mode = goalData.distribution_mode || "uniform";
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const dow = date.getUTCDay(); // 0 = Domingo
+  
+  if (dow === 0) return 0; // Domingos não têm meta
+
+  if (mode === "day") {
+    const rawPcts = goalData.distribution_day || goalData.distribution_percentages;
+    const pcts = Array.isArray(rawPcts) ? rawPcts.map(Number) : [];
+    const pct = pcts[dow - 1] || 0;
+    const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    let count = 0;
+    for (let i = 1; i <= lastDay; i++) {
+      if (new Date(Date.UTC(y, m - 1, i)).getUTCDay() === dow) count++;
+    }
+    return count > 0 ? (pct / 100) / count : 0;
+  }
+
+  const diasUteis = goalData.dias_uteis || 24;
+  return 1 / diasUteis;
+}
+
 export default function SellerProfile() {
   const { name } = useParams<{ name: string }>();
   const navigate = useNavigate();
@@ -147,7 +179,7 @@ export default function SellerProfile() {
     [data, myVendaNums]
   );
 
-  // ── Current month ─────────────────────────────────────────────────────────
+  // ── Current month & day selection ─────────────────────────────────────────
   const now = new Date();
   const { year: realYear, month: realMonth } = getDatePartsInTimeZone(now, BR_TIME_ZONE);
   
@@ -156,19 +188,37 @@ export default function SellerProfile() {
     month: searchParams.get("month") ? parseInt(searchParams.get("month")!, 10) : realMonth
   });
 
+  const [selectedDay, setSelectedDay] = useState<string>("all");
+
   const currentYear = selectedMonth.year;
   const currentMonth = selectedMonth.month;
   const targetYearMonth = `${currentYear}-${String(currentMonth).padStart(2, "0")}`;
   const selectedMonthLabel = `${MONTH_NAMES[currentMonth - 1]} de ${currentYear}`;
   const isCurrentMonth = currentYear === realYear && currentMonth === realMonth;
 
+  const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+  const dayOptions = useMemo(() => [
+    { value: "all", label: "Mês todo" },
+    ...Array.from({ length: daysInMonth }, (_, i) => ({
+      value: String(i + 1),
+      label: `Dia ${i + 1}`,
+    })),
+  ], [daysInMonth]);
+
+  const isDayView = selectedDay !== "all";
+  const targetDayDate = isDayView
+    ? `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(selectedDay).padStart(2, "0")}`
+    : undefined;
+
   const goToPrevMonth = () => {
+    setSelectedDay("all");
     setSelectedMonth((prev) => {
       if (prev.month === 1) return { year: prev.year - 1, month: 12 };
       return { year: prev.year, month: prev.month - 1 };
     });
   };
   const goToNextMonth = () => {
+    setSelectedDay("all");
     setSelectedMonth((prev) => {
       if (prev.month === 12) return { year: prev.year + 1, month: 1 };
       return { year: prev.year, month: prev.month + 1 };
@@ -180,12 +230,15 @@ export default function SellerProfile() {
   const initialCommissionStr = sessionStorage.getItem("dashboardCommissionMode");
   const commissionMode = (initialCommissionStr as "fixa" | "dinamica") || "dinamica";
 
-  const dashboardFilters = {
-    year: currentYear,
-    month: currentMonth,
-    vendedor: "all",
-    departamento: "all",
-  };
+  const dashboardFilters = useMemo(
+    () => ({
+      year: currentYear,
+      month: currentMonth,
+      vendedor: "all",
+      departamento: "all",
+    }),
+    [currentYear, currentMonth]
+  );
   const { data: dashboardData } = useSalesData(store, dashboardFilters);
 
   const paFilters: PAFilters = useMemo(
@@ -214,6 +267,20 @@ export default function SellerProfile() {
   const ticketMedio = myVendas.length > 0 ? totalGeral / myVendas.length : 0;
   const numPedidos = myVendas.length;
 
+  // ── Filtered vendas for selected day/month ────────────────────────────────
+  const filteredVendas = useMemo(() => {
+    return monthVendas.filter((v) => {
+      if (!v.data_venda) return false;
+      if (selectedDay === "all") return true;
+      const [, , d] = v.data_venda.split("-");
+      return Number(d) === Number(selectedDay);
+    });
+  }, [monthVendas, selectedDay]);
+
+  const totalPeriodo = filteredVendas.reduce((s, v) => s + v.valor_total, 0);
+  const numPedidosPeriodo = filteredVendas.length;
+  const ticketMedioPeriodo = numPedidosPeriodo > 0 ? totalPeriodo / numPedidosPeriodo : 0;
+
   const sellerPAItem = useMemo(() => {
     if (!paData?.ranking) return null;
     return paData.ranking.find((r) => isSellerMatch(r.vendedor, sellerName));
@@ -225,23 +292,29 @@ export default function SellerProfile() {
   const paDiff = sellerPAItem?.diff_vs_loja ?? (sellerPA > 0 && storePA > 0 ? sellerPA - storePA : 0);
 
   // ── All sellers rank ──────────────────────────────────────────────────────
-  const rank = useMemo(() => {
-    if (!dashboardData?.ranking) return 0;
-    return dashboardData.ranking.findIndex((r) => r.vendedor === sellerName) + 1;
-  }, [dashboardData, sellerName]);
+  const validSellersRanking = useMemo(() => {
+    return (dashboardData?.ranking || []).filter(
+      (r) => r.vendedor && !["LOJA", "GERAL", "ADMIN"].includes(r.vendedor.trim().toUpperCase())
+    );
+  }, [dashboardData?.ranking]);
 
-  const sellerCount = Math.max(dashboardData?.ranking?.length || 1, 1);
+  const rank = useMemo(() => {
+    if (validSellersRanking.length === 0) return 0;
+    return validSellersRanking.findIndex((r) => isSellerMatch(r.vendedor, sellerName)) + 1;
+  }, [validSellersRanking, sellerName]);
+
+  const sellerCount = Math.max(validSellersRanking.length, 1);
   const sellerConfig = configs?.find((c) => isSellerMatch(c.nome_vendedor, sellerName));
   const sellerWeight = sellerConfig?.peso_meta !== undefined && sellerConfig?.peso_meta !== null ? Number(sellerConfig.peso_meta) : 1;
 
   const totalWeight = useMemo(() => {
-    if (!dashboardData?.ranking || dashboardData.ranking.length === 0) return 1;
-    return dashboardData.ranking.reduce((acc, r) => {
+    if (validSellersRanking.length === 0) return 1;
+    return validSellersRanking.reduce((acc, r) => {
       const cfg = configs?.find((c) => isSellerMatch(c.nome_vendedor, r.vendedor));
       const w = cfg?.peso_meta !== undefined && cfg?.peso_meta !== null ? Number(cfg.peso_meta) : 1;
       return acc + w;
-    }, 0);
-  }, [dashboardData?.ranking, configs]);
+    }, 0) || 1;
+  }, [validSellersRanking, configs]);
 
   const sellerRatio = totalWeight > 0 ? sellerWeight / totalWeight : (sellerCount > 0 ? 1 / sellerCount : 1);
 
@@ -250,7 +323,20 @@ export default function SellerProfile() {
     () => calculateSingleDynamicCommission(totalMes, sellerCount, goalData, sellerRatio, sellerWeight),
     [totalMes, sellerCount, goalData, sellerRatio, sellerWeight]
   );
-  const displayComissao = commissionMode === "dinamica" ? comissaoDinamicaMes : comissaoFixaMes;
+
+  const comissaoFixaPeriodo = filteredVendas.reduce((s, v) => s + v.comissao_vendedor, 0);
+  const comissaoDinamicaPeriodo = useMemo(() => {
+    if (selectedDay === "all") {
+      return comissaoDinamicaMes;
+    }
+    if (totalMes > 0 && comissaoDinamicaMes > 0) {
+      const dynamicRate = comissaoDinamicaMes / totalMes;
+      return totalPeriodo * dynamicRate;
+    }
+    return calculateSingleDynamicCommission(totalPeriodo, sellerCount, goalData, sellerRatio, sellerWeight);
+  }, [selectedDay, comissaoDinamicaMes, totalMes, totalPeriodo, sellerCount, goalData, sellerRatio, sellerWeight]);
+
+  const displayComissao = 0;
 
   // ── Monthly history (last 12 months) ─────────────────────────────────────
   const monthlyHistory = useMemo(() => {
@@ -270,32 +356,40 @@ export default function SellerProfile() {
       });
   }, [myVendas]);
 
-  // ── Top departments ───────────────────────────────────────────────────────
-  const monthVendaNums = useMemo(
-    () => new Set(monthVendas.map((v) => v.numero_venda)),
-    [monthVendas]
+  // ── Top departments & Top clients (filtered) ─────────────────────────────
+  const filteredVendaNums = useMemo(
+    () => new Set(filteredVendas.map((v) => v.numero_venda)),
+    [filteredVendas]
   );
 
-  const monthDetalhada = useMemo(
-    () => (data?.detalhada || []).filter((d) => monthVendaNums.has(d.venda)),
-    [data, monthVendaNums]
+  const filteredDetalhada = useMemo(
+    () => (data?.detalhada || []).filter((d) => filteredVendaNums.has(d.venda)),
+    [data, filteredVendaNums]
   );
+
+  const sellerItensPeriodo = useMemo(() => {
+    return filteredDetalhada.reduce((acc, d) => acc + (d.qtd || 1), 0);
+  }, [filteredDetalhada]);
+
+  const sellerPAPeriodo = useMemo(() => {
+    if (numPedidosPeriodo === 0) return 0;
+    return sellerItensPeriodo / numPedidosPeriodo;
+  }, [sellerItensPeriodo, numPedidosPeriodo]);
 
   const topDepts = useMemo(() => {
     const map: Record<string, number> = {};
-    monthDetalhada.forEach((d) => {
+    filteredDetalhada.forEach((d) => {
       if (d.departamento) map[d.departamento] = (map[d.departamento] || 0) + d.subtotal;
     });
     return Object.entries(map)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 6)
       .map(([name, total]) => ({ name, total }));
-  }, [monthDetalhada]);
+  }, [filteredDetalhada]);
 
-  // ── Top clients ───────────────────────────────────────────────────────────
   const topClients = useMemo(() => {
     const map: Record<string, { total: number; count: number }> = {};
-    monthVendas.forEach((v) => {
+    filteredVendas.forEach((v) => {
       const c = v.cliente || "Desconhecido";
       if (!map[c]) map[c] = { total: 0, count: 0 };
       map[c].total += v.valor_total;
@@ -305,21 +399,21 @@ export default function SellerProfile() {
       .sort((a, b) => b[1].total - a[1].total)
       .slice(0, 5)
       .map(([name, d]) => ({ name, ...d }));
-  }, [monthVendas]);
+  }, [filteredVendas]);
 
   // ── Tipo de venda ─────────────────────────────────────────────────────────
   const tiposVenda = useMemo(() => {
     const map: Record<string, number> = {};
-    monthVendas.forEach((v) => {
+    filteredVendas.forEach((v) => {
       const t = v.tipo_venda || "Outros";
       map[t] = (map[t] || 0) + v.valor_total;
     });
     return Object.entries(map)
       .sort((a, b) => b[1] - a[1])
       .map(([tipo, total]) => ({ tipo, total }));
-  }, [monthVendas]);
+  }, [filteredVendas]);
 
-  // ── Goal performance ──────────────────────────────────────────────────────
+  // ── Goal performance (Mês todo vs Dia específico) ────────────────────────
   const metas = goalData
     ? {
         minima: sellerWeight === 0 ? 0 : goalData.meta_minima * sellerRatio,
@@ -329,12 +423,17 @@ export default function SellerProfile() {
       }
     : { minima: 18000, top1: 22000, top2: 26000, master: 30000 };
 
+  const dailyFraction = isDayView && targetDayDate ? getDailyGoalFraction(targetDayDate, goalData) : 1;
+  const isSundaySelection = isDayView && targetDayDate && new Date(targetDayDate + "T12:00:00Z").getUTCDay() === 0;
+
   const goalLevels = [
-    { label: "Meta Mínima", value: metas.minima, color: "hsl(215 52% 52%)", perc: 0.010 },
-    { label: "Top 1",       value: metas.top1,   color: "hsl(188 55% 40%)", perc: 0.013 },
-    { label: "Top 2",       value: metas.top2,   color: "hsl(172 48% 42%)", perc: 0.015 },
-    { label: "Master",      value: metas.master, color: "hsl(38 92% 50%)",  perc: 0.020 },
+    { label: "Meta Mínima", value: metas.minima * dailyFraction, color: "hsl(215 52% 52%)", perc: 0.010 },
+    { label: "Top 1",       value: metas.top1 * dailyFraction,   color: "hsl(188 55% 40%)", perc: 0.013 },
+    { label: "Top 2",       value: metas.top2 * dailyFraction,   color: "hsl(172 48% 42%)", perc: 0.015 },
+    { label: "Master",      value: metas.master * dailyFraction, color: "hsl(38 92% 50%)",  perc: 0.020 },
   ];
+
+  const realizedPerformance = isDayView ? totalPeriodo : totalMes;
 
   // ── Weekly individual goal tracking ──────────────────────────────────────
   const [selectedMeta, setSelectedMeta] = useState<MetaKey>("minima");
@@ -375,6 +474,8 @@ export default function SellerProfile() {
     [weeks, selectedSellerMonthlyGoal, weekdayPercents],
   );
 
+  const activeWeeklyMetaDiaria = selectedSellerMonthlyGoal > 0 && DIAS_UTEIS_MES > 0 ? selectedSellerMonthlyGoal / DIAS_UTEIS_MES : 0;
+
   const enrichedWeeks = useMemo(() => {
     let accumulatedDeficit = 0;
 
@@ -395,17 +496,22 @@ export default function SellerProfile() {
             const target = dayTargets?.[d.toISOString().slice(0, 10)];
             return sum + (target ?? (selectedSellerMonthlyGoal * (weekdayPercents[dayOfWeek - 1] / 100)));
           }, 0)
-        : (selectedSellerMonthlyGoal / DIAS_UTEIS_MES) * week.days.filter((d) => d.getUTCDay() !== 0).length;
+        : activeWeeklyMetaDiaria * week.days.length;
 
+      const useAdjusted = useAdjustedMetaPerWeek[weekIndex] ?? true;
       const carriedDeficit = accumulatedDeficit;
-      const useAdjusted = !!useAdjustedMetaPerWeek[weekIndex];
-      const activeMeta = useAdjusted ? baseWeekMeta + carriedDeficit : baseWeekMeta;
+      const adjustedMeta = baseWeekMeta + carriedDeficit;
+
+      const activeMeta = useAdjusted ? adjustedMeta : baseWeekMeta;
       const activePct = activeMeta > 0 ? Math.min((weekTotal / activeMeta) * 100, 100) : 0;
 
-      const isWeekEnded = week.days.every((d) => d.getTime() < todayUtc.getTime());
+      const lastDayOfWeek = week.days[week.days.length - 1];
+      const isWeekEnded = lastDayOfWeek ? lastDayOfWeek.getTime() <= todayUtc.getTime() : false;
 
       if (isWeekEnded) {
-        accumulatedDeficit = Math.max(0, activeMeta - weekTotal);
+        accumulatedDeficit = weekTotal < activeMeta ? (activeMeta - weekTotal) : 0;
+      } else {
+        accumulatedDeficit = 0;
       }
 
       return {
@@ -414,13 +520,14 @@ export default function SellerProfile() {
         weekTotal,
         baseWeekMeta,
         carriedDeficit,
+        adjustedMeta,
         activeMeta,
         useAdjusted,
         activePct,
         isWeekEnded,
       };
     });
-  }, [weeks, sellerSalesByDate, selectedSellerMonthlyGoal, sellerWeight, DIAS_UTEIS_MES, todayUtc, weekPercents, weekdayPercents, dayTargets, useAdjustedMetaPerWeek]);
+  }, [weeks, sellerSalesByDate, selectedSellerMonthlyGoal, sellerWeight, activeWeeklyMetaDiaria, todayUtc, weekPercents, weekdayPercents, dayTargets, useAdjustedMetaPerWeek]);
 
   if (isLoading) {
     return (
@@ -454,11 +561,12 @@ export default function SellerProfile() {
           <div className="w-8 sm:w-16 shrink-0" />
         )}
         
-        <div className="flex flex-1 justify-center">
+        <div className="flex flex-1 justify-center items-center gap-2">
           <div className="flex items-center gap-1 h-9 border border-border rounded-md bg-secondary px-1">
             <button
               onClick={goToPrevMonth}
               className="p-1 rounded hover:bg-accent transition-colors"
+              title="Mês anterior"
             >
               <ChevronLeft className="w-4 h-4 text-muted-foreground" />
             </button>
@@ -469,10 +577,24 @@ export default function SellerProfile() {
               onClick={goToNextMonth}
               disabled={isCurrentMonth}
               className="p-1 rounded hover:bg-accent transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Próximo mês"
             >
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
             </button>
           </div>
+
+          <Select value={selectedDay} onValueChange={setSelectedDay}>
+            <SelectTrigger className="w-[120px] sm:w-[130px] h-9 bg-secondary border-border text-sm font-medium focus:ring-1 focus:ring-primary shrink-0">
+              <SelectValue placeholder="Mês todo" />
+            </SelectTrigger>
+            <SelectContent className="max-h-72 bg-popover text-popover-foreground border-border z-50">
+              {dayOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value} className="text-sm cursor-pointer">
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <img src="/logo.png" alt="Maria Lima" className="h-8 w-auto object-contain shrink-0" />
@@ -519,14 +641,16 @@ export default function SellerProfile() {
               </div>
             </div>
 
-            {/* Month highlight */}
+            {/* Period highlight */}
             <div className="text-center sm:text-right shrink-0">
               <div className="inline-flex items-center gap-1.5 bg-muted/50 text-muted-foreground px-2.5 py-1 rounded-md mb-2">
                 <span className="w-2 h-2 rounded-full" style={{ backgroundColor: TEAL }} />
-                <span className="text-[11px] font-semibold uppercase tracking-wider">{selectedMonthLabel}</span>
+                <span className="text-[11px] font-semibold uppercase tracking-wider">
+                  {isDayView ? `Dia ${selectedDay} de ${selectedMonthLabel}` : selectedMonthLabel}
+                </span>
               </div>
-              <p className="text-2xl sm:text-3xl font-bold leading-none truncate" style={{ color: TEAL }}>{fmt(totalMes)}</p>
-              <p className="text-xs text-muted-foreground mt-1.5">{monthVendas.length} pedido{monthVendas.length !== 1 ? "s" : ""}</p>
+              <p className="text-2xl sm:text-3xl font-bold leading-none truncate" style={{ color: TEAL }}>{fmt(totalPeriodo)}</p>
+              <p className="text-xs text-muted-foreground mt-1.5">{numPedidosPeriodo} pedido{numPedidosPeriodo !== 1 ? "s" : ""}</p>
             </div>
           </CardContent>
         </Card>
@@ -535,36 +659,36 @@ export default function SellerProfile() {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           {[
             { 
-              label: "Total no Mês",  
-              value: fmt(totalMes), 
+              label: isDayView ? "Total no Dia" : "Total no Mês",  
+              value: fmt(totalPeriodo), 
               icon: DollarSign,  
-              sub: `${monthVendas.length} pedidos` 
+              sub: `${numPedidosPeriodo} pedido${numPedidosPeriodo !== 1 ? "s" : ""}` 
             },
             { 
-              label: "Comissão no Mês",   
+              label: isDayView ? "Comissão no Dia" : "Comissão no Mês",   
               value: fmt(displayComissao), 
               icon: Award,       
               sub: commissionMode === "dinamica" ? "dinâmica" : "fixa" 
             },
             { 
               label: "P.A Médio",     
-              value: sellerPA > 0 ? fmtPA(sellerPA) : "—", 
+              value: sellerPA > 0 ? fmtPA(sellerPA) : "0,00", 
               icon: Layers,  
-              sub: sellerPA > 0 
-                ? `${sellerItens} peças (${paDiff >= 0 ? "+" : ""}${fmtPA(paDiff)} vs loja)` 
+              sub: storePA > 0 
+                ? `Média loja: ${fmtPA(storePA)}` 
                 : "peças / atend." 
             },
             { 
               label: "Ticket Médio",     
-              value: fmt(monthTicketMedio), 
+              value: fmt(ticketMedio), 
               icon: TrendingUp,  
-              sub: "por pedido no mês" 
+              sub: "média histórica por pedido" 
             },
             { 
-              label: "Pedidos no Mês",   
-              value: String(monthVendas.length), 
+              label: isDayView ? "Pedidos no Dia" : "Pedidos no Mês",   
+              value: String(numPedidosPeriodo), 
               icon: ShoppingBag, 
-              sub: `em ${selectedMonthLabel.toLowerCase()}` 
+              sub: isDayView ? `no dia ${selectedDay}` : `em ${selectedMonthLabel.toLowerCase()}` 
             },
           ].map((kpi) => (
             <Card key={kpi.label} className="border-border bg-card shadow-sm overflow-hidden">
@@ -663,33 +787,49 @@ export default function SellerProfile() {
           {/* Performance de Metas */}
           <Card className="lg:col-span-2 border-border bg-card shadow-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-bold">Performance de Metas — {selectedMonthLabel}</CardTitle>
+              <CardTitle className="text-sm font-bold">
+                Performance de Metas — {isDayView ? `Dia ${selectedDay} de ${selectedMonthLabel}` : selectedMonthLabel}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {goalLevels.map((g) => {
-                const pct = Math.min((totalMes / g.value) * 100, 100);
-                const reached = totalMes >= g.value;
-                return (
-                  <div key={g.label}>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="font-medium text-foreground">{g.label}</span>
-                      <span className={reached ? "font-bold" : "text-muted-foreground"} style={reached ? { color: g.color } : {}}>
-                        {reached ? "✓ Atingida" : `${pct.toFixed(0)}% — faltam ${fmt(g.value - totalMes)}`}
-                      </span>
+              {sellerWeight <= 0 ? (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  Vendedor isento de metas (Peso 0).
+                </div>
+              ) : isSundaySelection ? (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  Domingos não possuem meta estipulada.
+                </div>
+              ) : (
+                goalLevels.map((g) => {
+                  const pct = g.value > 0 ? Math.min((realizedPerformance / g.value) * 100, 100) : 0;
+                  const reached = g.value > 0 && realizedPerformance >= g.value;
+                  const diff = Math.max(0, g.value - realizedPerformance);
+
+                  return (
+                    <div key={g.label}>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="font-medium text-foreground">{g.label}</span>
+                        <span className={reached ? "font-bold" : "text-muted-foreground"} style={reached ? { color: g.color } : {}}>
+                          {reached ? "✓ Atingida" : `${pct.toFixed(0)}% — faltam ${fmt(diff)}`}
+                        </span>
+                      </div>
+                      <div className="h-2 rounded-full overflow-hidden bg-muted">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{ width: `${pct}%`, backgroundColor: g.color }}
+                        />
+                      </div>
+                      <div className="flex justify-between items-center mt-0.5">
+                        <p className="text-[10px] text-muted-foreground">
+                          Comissão ({(g.perc * 100).toFixed(1).replace(".", ",")}%): <span className="font-medium">{fmt(g.value * g.perc)}</span>
+                        </p>
+                        <p className="text-[10.5px] text-muted-foreground text-right">{fmt(g.value)}</p>
+                      </div>
                     </div>
-                    <div className="h-2 rounded-full overflow-hidden bg-muted">
-                      <div
-                        className="h-full rounded-full transition-all duration-500"
-                        style={{ width: `${pct}%`, backgroundColor: g.color }}
-                      />
-                    </div>
-                    <div className="flex justify-between items-center mt-0.5">
-                      <p className="text-[10px] text-muted-foreground">Comissão ({(g.perc * 100).toFixed(1).replace(".", ",")}%): <span className="font-medium">{fmt(g.value * g.perc)}</span></p>
-                      <p className="text-[10.5px] text-muted-foreground text-right">{fmt(g.value)}</p>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </CardContent>
           </Card>
         </div>

@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import {
-  Target, AlertTriangle,
+  Target, AlertTriangle, Store, User, ArrowUpRight, ArrowDownRight,
 } from "lucide-react";
 import { useCurrentMonthGoals } from "@/hooks/useMonthlyGoals";
 import { useVendedoresConfig } from "@/hooks/useVendedoresConfig";
@@ -29,14 +30,6 @@ interface MetasTrackingProps {
   store?: string;
   selectedMonth?: { year: number; month: number };
 }
-
-// Commission values per level
-const COMISSOES = {
-  minima: 140,
-  top1: 208,
-  top2: 300,
-  master: 420,
-};
 
 function formatBRL(value: number) {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -87,7 +80,6 @@ function getWeeksOfMonth(year: number, monthIndex: number) {
 const DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 type DistributionMode = "uniform" | "day" | "week";
-
 type WeekSpec = { label: string; days: Date[] };
 
 function parsePercentArray(value: unknown, expectedLen?: number): number[] | null {
@@ -123,17 +115,27 @@ function buildDayTargetsFromWeekdayPercents(weeks: WeekSpec[], metaMensal: numbe
   return targets;
 }
 
-export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaChange, store = "sobral", selectedMonth }: MetasTrackingProps) {
+export default function MetasTracking({
+  ranking,
+  timeline,
+  selectedMeta,
+  onMetaChange,
+  store = "sobral",
+  selectedMonth
+}: MetasTrackingProps) {
   const navigate = useNavigate();
   const now = new Date();
   const { data: configs } = useVendedoresConfig();
   const { year: realYear, month: realMonthNum, day: todayDay } = getDatePartsInTimeZone(now, BR_TIME_ZONE);
-  
+
+  // Modo de visualização: "loja" (Visão Loja - Consolidado) | "individual" (Visão Individual - Por Vendedor)
+  const [viewMode, setViewMode] = useState<"loja" | "individual">("loja");
+
   const isCurrentMonth = !selectedMonth || (selectedMonth.year === realYear && selectedMonth.month === realMonthNum);
   const displayYear = selectedMonth ? selectedMonth.year : realYear;
   const displayMonthNum = selectedMonth ? selectedMonth.month : realMonthNum;
   const displayMonth = displayMonthNum - 1;
-  
+
   const todayUtc = new Date(Date.UTC(realYear, realMonthNum - 1, todayDay, 23, 59, 59, 999));
 
   const queryParams = new URLSearchParams();
@@ -156,7 +158,9 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
 
   const DIAS_UTEIS_MES = goalData?.dias_uteis ?? 24;
 
-  const sellerTotals = ranking.map(r => ({ name: r.vendedor, total: r.total, url_foto: r.url_foto }));
+  const sellerTotals = useMemo(() => {
+    return ranking.map(r => ({ name: r.vendedor, total: r.total, url_foto: r.url_foto }));
+  }, [ranking]);
 
   const totalRealized = sellerTotals.reduce((s, v) => s + v.total, 0);
   const sellerCount = Math.max(sellerTotals.length, 1);
@@ -168,10 +172,6 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
       return { name: s.name, peso };
     });
   }, [sellerTotals, configs]);
-
-  const totalWeight = useMemo(() => {
-    return sellerWeights.reduce((sum, item) => sum + item.peso, 0);
-  }, [sellerWeights]);
 
   const getSellerMetas = (sellerName: string) => {
     const sw = sellerWeights.find((w) => w.name === sellerName);
@@ -185,7 +185,8 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
         master: 0,
       };
     }
-    const ratio = totalWeight > 0 ? peso / totalWeight : 1 / sellerCount;
+    // Fórmula: VALOR DA META / QUANTIDADE DE VENDEDORES
+    const ratio = sellerCount > 0 ? peso / sellerCount : 1;
     return {
       peso,
       minima: METAS_LOJA.minima * ratio,
@@ -195,27 +196,25 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
     };
   };
 
-  const METAS = useMemo(() => ({
-    minima: METAS_LOJA.minima / sellerCount,
-    top1: METAS_LOJA.top1 / sellerCount,
-    top2: METAS_LOJA.top2 / sellerCount,
-    master: METAS_LOJA.master / sellerCount,
-  }), [METAS_LOJA, sellerCount]);
+  const isIndividualView = viewMode === "individual";
 
   const weeks = useMemo(() => getWeeksOfMonth(displayYear, displayMonth), [displayYear, displayMonth]);
 
   const salesByDate = useMemo(() => {
     const map: Record<string, number> = {};
     timeline.forEach((t) => {
-      map[t.date] = t.total;
+      map[t.date] = isIndividualView && sellerCount > 0 ? t.total / sellerCount : t.total;
     });
     return map;
-  }, [timeline]);
+  }, [timeline, isIndividualView, sellerCount]);
 
   const distributionMode = ((goalData as any)?.distribution_mode as DistributionMode | undefined) ?? "uniform";
   const distributionPercentages = (goalData as any)?.distribution_percentages as unknown;
 
-  const activeMetaMensal = METAS_LOJA[selectedMeta];
+  // Se individual: Meta da Loja dividida pelo número de vendedores
+  const activeMetaMensal = isIndividualView && sellerCount > 0
+    ? METAS_LOJA[selectedMeta] / sellerCount
+    : METAS_LOJA[selectedMeta];
 
   const weekPercents = useMemo(
     () => (distributionMode === "week" ? parsePercentArray(distributionPercentages, weeks.length) : null),
@@ -232,21 +231,14 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
     [weeks, activeMetaMensal, weekdayPercents],
   );
 
-  const diasUteisCorridos = useMemo(() => {
-    if (!isCurrentMonth) return DIAS_UTEIS_MES;
-    let count = 0;
-    for (let d = 1; d <= todayDay; d++) {
-      const date = new Date(Date.UTC(displayYear, displayMonth, d));
-      if (date.getUTCDay() !== 0) count++;
-    }
-    return count;
-  }, [isCurrentMonth, todayDay, displayYear, displayMonth, DIAS_UTEIS_MES]);
-
+  // ── Rola-Dívida Semanal ──────────────────────────────────────────────────
   const [useAdjustedMetaPerWeek, setUseAdjustedMetaPerWeek] = useState<Record<number, boolean>>({});
+
+  const activeWeeklyMetaDiaria = activeMetaMensal > 0 && DIAS_UTEIS_MES > 0 ? activeMetaMensal / DIAS_UTEIS_MES : 0;
 
   const enrichedWeeks = useMemo(() => {
     let accumulatedDeficit = 0;
-    
+
     return weeks.map((week, weekIndex) => {
       const weekTotal = week.days.reduce((sum, d) => {
         const key = d.toISOString().slice(0, 10);
@@ -262,17 +254,22 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
             const target = dayTargets?.[d.toISOString().slice(0, 10)];
             return sum + (target ?? (activeMetaMensal * (weekdayPercents[dayOfWeek - 1] / 100)));
           }, 0)
-        : (activeMetaMensal / DIAS_UTEIS_MES) * week.days.filter((d) => d.getUTCDay() !== 0).length;
+        : activeWeeklyMetaDiaria * week.days.length;
 
+      const useAdjusted = useAdjustedMetaPerWeek[weekIndex] ?? true;
       const carriedDeficit = accumulatedDeficit;
-      const useAdjusted = !!useAdjustedMetaPerWeek[weekIndex];
-      const activeMeta = useAdjusted ? baseWeekMeta + carriedDeficit : baseWeekMeta;
+      const adjustedMeta = baseWeekMeta + carriedDeficit;
+
+      const activeMeta = useAdjusted ? adjustedMeta : baseWeekMeta;
       const activePct = activeMeta > 0 ? Math.min((weekTotal / activeMeta) * 100, 100) : 0;
 
-      const isWeekEnded = week.days.every((d) => d.getTime() < todayUtc.getTime());
+      const lastDayOfWeek = week.days[week.days.length - 1];
+      const isWeekEnded = lastDayOfWeek ? lastDayOfWeek.getTime() <= todayUtc.getTime() : false;
 
       if (isWeekEnded) {
-        accumulatedDeficit = Math.max(0, activeMeta - weekTotal);
+        accumulatedDeficit = weekTotal < activeMeta ? (activeMeta - weekTotal) : 0;
+      } else {
+        accumulatedDeficit = 0;
       }
 
       return {
@@ -281,24 +278,75 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
         weekTotal,
         baseWeekMeta,
         carriedDeficit,
+        adjustedMeta,
         activeMeta,
         useAdjusted,
         activePct,
         isWeekEnded,
       };
     });
-  }, [weeks, salesByDate, activeMetaMensal, DIAS_UTEIS_MES, todayUtc, weekPercents, weekdayPercents, dayTargets, useAdjustedMetaPerWeek]);
+  }, [weeks, salesByDate, activeMetaMensal, activeWeeklyMetaDiaria, todayUtc, weekPercents, weekdayPercents, dayTargets, useAdjustedMetaPerWeek]);
 
   return (
-    <div className="space-y-6">
-      {/* ── Cards de Meta da Loja ── */}
+    <div className="space-y-6 animate-in fade-in duration-300">
+
+      {/* ── Top Header com Alternador de Visão ─────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-card/70 backdrop-blur-md p-3 sm:p-4 rounded-xl border border-border shadow-sm">
+        <div>
+          <h2 className="text-base sm:text-lg font-bold text-foreground flex items-center gap-2">
+            <Target className="w-5 h-5 text-primary" />
+            Acompanhamento e Gestão de Metas
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {isIndividualView
+              ? `Visão individual calculada proporcionalmente por vendedora (Base: ${sellerCount} vendedoras).`
+              : "Visão global de metas da filial, acompanhamento semanal e ranking de vendedores."}
+          </p>
+        </div>
+
+        {/* Segmented Control de Visão */}
+        <div className="flex items-center bg-muted/80 p-1 rounded-lg border border-border/60 self-stretch sm:self-auto shrink-0">
+          <button
+            onClick={() => setViewMode("loja")}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-bold transition-all duration-200 ${
+              !isIndividualView
+                ? "bg-card text-foreground shadow-sm ring-1 ring-border/50"
+                : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+            }`}
+          >
+            <Store className="w-3.5 h-3.5 text-primary" />
+            <span>Visão Loja (Consolidado)</span>
+          </button>
+          <button
+            onClick={() => setViewMode("individual")}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-bold transition-all duration-200 ${
+              isIndividualView
+                ? "bg-card text-foreground shadow-sm ring-1 ring-border/50"
+                : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+            }`}
+          >
+            <User className="w-3.5 h-3.5 text-primary" />
+            <span>Visão Individual (Por Vendedor)</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ── Cards de Metas (Loja ou Individual) ────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {META_OPTIONS.map((opt) => {
           const isSelected = selectedMeta === opt.key;
-          const metaValue = METAS_LOJA[opt.key];
-          const pct = metaValue > 0 ? Math.min((totalRealized / metaValue) * 100, 100) : 0;
-          const diff = totalRealized - metaValue;
+          const metaValue = isIndividualView
+            ? METAS_LOJA[opt.key] / sellerCount
+            : METAS_LOJA[opt.key];
+          
+          const realizedValue = isIndividualView
+            ? totalRealized / sellerCount
+            : totalRealized;
+
+          const pct = metaValue > 0 ? (realizedValue / metaValue) * 100 : 0;
+          const diff = realizedValue - metaValue;
           const isHit = diff >= 0;
+          const growthRate = metaValue > 0 ? ((realizedValue / metaValue) - 1) * 100 : 0;
 
           return (
             <Card
@@ -310,31 +358,42 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
                   : "border-border/60 hover:border-border hover:shadow-sm bg-card/60"
               }`}
             >
-              <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {opt.label}
+              <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0 gap-2">
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate">
+                  {opt.label} {isIndividualView ? "Individual" : ""}
                 </CardTitle>
-                <div className={`p-1.5 rounded-md ${isSelected ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
-                  <Target className="w-4 h-4" />
-                </div>
+                {isHit ? (
+                  <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-bold text-[10px] gap-1 px-2 py-0.5 shrink-0 shadow-none">
+                    <ArrowUpRight className="w-3 h-3" />
+                    BATEU {growthRate >= 0 ? `+${growthRate.toFixed(1)}%` : `${growthRate.toFixed(1)}%`}
+                  </Badge>
+                ) : (
+                  <Badge className="bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30 font-bold text-[10px] gap-1 px-2 py-0.5 shrink-0 shadow-none">
+                    <ArrowDownRight className="w-3 h-3" />
+                    NÃO BATEU {growthRate.toFixed(1)}%
+                  </Badge>
+                )}
               </CardHeader>
               <CardContent className="space-y-3">
                 <div>
-                  <div className="text-2xl font-bold">{formatBRL(metaValue)}</div>
+                  <div className="text-2xl font-bold tracking-tight text-foreground">{formatBRL(metaValue)}</div>
                   <div className="flex items-center justify-between text-xs mt-1">
-                    <span className="text-muted-foreground">Realizado: {formatBRL(totalRealized)}</span>
-                    <span className={`font-semibold ${isHit ? "text-emerald-600 dark:text-emerald-400" : "text-primary"}`}>
-                      {pct.toFixed(1)}%
+                    <span className="text-muted-foreground">
+                      {isIndividualView ? "Média Realizada: " : "Realizado: "}
+                      <span className="font-semibold text-foreground">{formatBRL(realizedValue)}</span>
+                    </span>
+                    <span className={`font-bold tabular-nums ${isHit ? "text-emerald-600 dark:text-emerald-400" : "text-primary"}`}>
+                      {pct.toFixed(1)}% atingido
                     </span>
                   </div>
                 </div>
 
-                <Progress value={pct} className="h-2" />
+                <Progress value={Math.min(pct, 100)} className="h-2" />
 
                 <div className="text-xs flex items-center justify-between pt-1 border-t border-border/40">
-                  <span className="text-muted-foreground">Diferença</span>
-                  <span className={`font-semibold ${isHit ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
-                    {isHit ? "+" : ""}{formatBRL(diff)}
+                  <span className="text-muted-foreground">Diferença vs Meta</span>
+                  <span className={`font-bold tabular-nums ${isHit ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                    {isHit ? "+" : ""}{formatBRL(diff)} ({growthRate >= 0 ? "+" : ""}{growthRate.toFixed(1)}%)
                   </span>
                 </div>
               </CardContent>
@@ -343,7 +402,7 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
         })}
       </div>
 
-      {/* Vendas/Mês Diferença Table */}
+      {/* ── Tabela de Vendas/Mês Diferença para Metas ──────────────────────── */}
       <Card className="hidden md:block border border-border/60">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold">Vendas/Mês — Diferença para Metas</CardTitle>
@@ -431,10 +490,10 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
         </CardContent>
       </Card>
 
-      {/* Comissões Table */}
+      {/* ── Status por Nível de Meta ───────────────────────────────────────── */}
       <Card className="hidden md:block border border-border/60">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold">Comissões por Nível de Meta</CardTitle>
+          <CardTitle className="text-sm font-semibold">Status por Nível de Meta</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -502,7 +561,7 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
         </CardContent>
       </Card>
 
-      {/* Mobile Unified Seller Cards */}
+      {/* ── Cards Mobile Unificados ────────────────────────────────────────── */}
       <div className="block md:grid md:grid-cols-2 gap-4 md:hidden space-y-4 md:space-y-0">
         {sellerTotals.map((seller, i) => {
           const sMetas = getSellerMetas(seller.name);
@@ -593,12 +652,12 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
         )}
       </div>
 
-      {/* Weekly tracking */}
+      {/* ── Acompanhamento Semanal ─────────────────────────────────────────── */}
       <Card className="border border-border/60">
         <CardHeader className="pb-3">
           <div>
             <CardTitle className="text-sm font-semibold">
-              Acompanhamento Semanal da Loja
+              {isIndividualView ? "Acompanhamento Semanal (Meta Individual)" : "Acompanhamento Semanal da Loja"}
             </CardTitle>
             <p className="text-xs text-muted-foreground mt-0.5">
               Meta de referência: <span className="font-semibold text-primary">{META_OPTIONS.find(m => m.key === selectedMeta)?.label}</span>
@@ -698,8 +757,6 @@ export default function MetasTracking({ ranking, timeline, selectedMeta, onMetaC
                     const dayValue = salesByDate[key] || 0;
                     const isPast = d <= todayUtc;
                     
-                    // Distribute activeMeta among the days of the week proportionally
-                    // If we use dayTargets, we scale it. Otherwise we divide evenly.
                     const dayMeta = (() => {
                       if (distributionMode === "day" && dayTargets) {
                         const originalDayTarget = dayTargets[key] || 0;

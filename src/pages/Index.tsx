@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
-import { ChevronLeft, ChevronRight, HelpCircle, Filter, FileDown, Loader2, ArrowLeftRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, HelpCircle, Filter, FileDown, Loader2, ArrowLeftRight, TrendingUp, Target } from "lucide-react";
 import { useSalesData, useDataExtracao, useTopClients } from "@/hooks/useSalesData";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserAccess } from "@/hooks/useUserAccess";
@@ -12,6 +12,8 @@ import DepartmentChart from "@/components/dashboard/DepartmentChart";
 import Sidebar from "@/components/dashboard/Sidebar";
 import MetasTracking, { META_OPTIONS, type MetaKey } from "@/components/dashboard/MetasTracking";
 import MonthlyComparisonView from "@/components/dashboard/MonthlyComparisonView";
+import YearlyComparisonView from "@/components/dashboard/YearlyComparisonView";
+import GoalsComparisonView from "@/components/dashboard/GoalsComparisonView";
 import PAAnalysisView from "@/components/dashboard/PAAnalysisView";
 import { useCurrentMonthGoals } from "@/hooks/useMonthlyGoals";
 import { useDynamicCommissions } from "@/hooks/useDynamicCommissions";
@@ -183,7 +185,17 @@ export default function Index({ store = "sobral" }: IndexProps) {
     return { year: selectedMonth.year, month: selectedMonth.month - 1 };
   });
 
+  // Modo Comparativo Ano a Ano (YoY)
+  const [isComparingYears, setIsComparingYears] = useState(false);
+  const [yearlyBaseYear, setYearlyBaseYear] = useState<number>(selectedMonth.year);
+  const [yearlyCompareYear, setYearlyCompareYear] = useState<number>(selectedMonth.year - 1);
+
+  // Modo Comparativo de Metas
+  const [isComparingGoals, setIsComparingGoals] = useState(false);
+
   const handleOpenComparison = () => {
+    setIsComparingYears(false);
+    setIsComparingGoals(false);
     setCompareBaseMonth(selectedMonth);
     setCompareTargetMonth(
       selectedMonth.month === 1
@@ -197,12 +209,36 @@ export default function Index({ store = "sobral" }: IndexProps) {
     setIsComparingMonths(false);
   };
 
-  // Desativa modo comparativo caso o usuário saia do Cockpit
+  const handleOpenYearlyComparison = () => {
+    setIsComparingMonths(false);
+    setIsComparingGoals(false);
+    setYearlyBaseYear(selectedMonth.year);
+    setYearlyCompareYear(selectedMonth.year - 1);
+    setIsComparingYears(true);
+  };
+
+  const handleCloseYearlyComparison = () => {
+    setIsComparingYears(false);
+  };
+
+  const handleOpenGoalsComparison = () => {
+    setIsComparingMonths(false);
+    setIsComparingYears(false);
+    setIsComparingGoals(true);
+  };
+
+  const handleCloseGoalsComparison = () => {
+    setIsComparingGoals(false);
+  };
+
+  // Desativa modos comparativos caso o usuário saia do Cockpit
   useEffect(() => {
-    if (activeView !== "cockpit" && isComparingMonths) {
-      setIsComparingMonths(false);
+    if (activeView !== "cockpit") {
+      if (isComparingMonths) setIsComparingMonths(false);
+      if (isComparingYears) setIsComparingYears(false);
+      if (isComparingGoals) setIsComparingGoals(false);
     }
-  }, [activeView, isComparingMonths]);
+  }, [activeView, isComparingMonths, isComparingYears, isComparingGoals]);
 
   // Query para Mês 1 (Base) do comparador (se for diferente do selectedMonth do dashboard)
   const isBaseSameAsDashboard =
@@ -631,19 +667,41 @@ export default function Index({ store = "sobral" }: IndexProps) {
                     </div>
                   </div>
 
-                  {/* Mobile Ações Cockpit: Comparar Meses & Baixar PDF */}
+                  {/* Mobile Ações Cockpit: Comparar Anos, Comparar Metas, Comparar Meses & Baixar PDF */}
                   {activeView === "cockpit" && (
                     <div className="pt-4 border-t border-border/50 space-y-2">
+                      <Button
+                        onClick={() => {
+                          if (isComparingGoals) handleCloseGoalsComparison();
+                          else handleOpenGoalsComparison();
+                        }}
+                        variant={isComparingGoals ? "default" : "outline"}
+                        className="w-full h-11 gap-2 font-bold shadow-sm transition-all text-xs"
+                      >
+                        <Target className="w-4 h-4" />
+                        <span>{isComparingGoals ? "Fechar Comparativo de Metas" : "Comparativo de Metas"}</span>
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          if (isComparingYears) handleCloseYearlyComparison();
+                          else handleOpenYearlyComparison();
+                        }}
+                        variant={isComparingYears ? "default" : "outline"}
+                        className="w-full h-11 gap-2 font-bold shadow-sm transition-all text-xs"
+                      >
+                        <TrendingUp className="w-4 h-4" />
+                        <span>{isComparingYears ? "Fechar Comparativo Anual" : "Comparativo Ano a Ano (YoY)"}</span>
+                      </Button>
                       <Button
                         onClick={() => {
                           if (isComparingMonths) handleCloseComparison();
                           else handleOpenComparison();
                         }}
                         variant={isComparingMonths ? "default" : "outline"}
-                        className="w-full h-11 gap-2 font-bold shadow-sm transition-all"
+                        className="w-full h-11 gap-2 font-bold shadow-sm transition-all text-xs"
                       >
                         <ArrowLeftRight className="w-4 h-4" />
-                        <span>{isComparingMonths ? "Fechar Comparativo" : "Comparar Meses"}</span>
+                        <span>{isComparingMonths ? "Fechar Comparativo Mensal" : "Comparar Meses"}</span>
                       </Button>
                       <Button
                         onClick={handleDownloadPdf}
@@ -789,11 +847,51 @@ export default function Index({ store = "sobral" }: IndexProps) {
               </div>
             </div>
 
-            {/* Botões Exclusivos da Aba Cockpit (Comparar Meses & Baixar PDF) */}
+            {/* Botões Exclusivos da Aba Cockpit (Comparar Metas, Comparar Anos, Comparar Meses & Baixar PDF) */}
             {activeView === "cockpit" && (
               <>
                 <div className="space-y-1.5">
-                  <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold invisible block">Comparar</label>
+                  <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold invisible block">Metas</label>
+                  <Button
+                    onClick={() => {
+                      if (isComparingGoals) handleCloseGoalsComparison();
+                      else handleOpenGoalsComparison();
+                    }}
+                    variant={isComparingGoals ? "default" : "outline"}
+                    className={`h-9 gap-2 font-bold shadow-sm transition-all text-xs ${
+                      isComparingGoals
+                        ? "bg-primary text-primary-foreground border-primary shadow-md"
+                        : "border-border bg-secondary/50 text-foreground hover:bg-secondary hover:text-primary"
+                    }`}
+                    title="Comparar faturamento realizado contra metas projetadas (2023 a 2026)"
+                  >
+                    <Target className="w-4 h-4" />
+                    <span>{isComparingGoals ? "Comparando Metas" : "Comparativo de Metas"}</span>
+                  </Button>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold invisible block">Comparar Anos</label>
+                  <Button
+                    onClick={() => {
+                      if (isComparingYears) handleCloseYearlyComparison();
+                      else handleOpenYearlyComparison();
+                    }}
+                    variant={isComparingYears ? "default" : "outline"}
+                    className={`h-9 gap-2 font-bold shadow-sm transition-all text-xs ${
+                      isComparingYears
+                        ? "bg-primary text-primary-foreground border-primary shadow-md"
+                        : "border-border bg-secondary/50 text-foreground hover:bg-secondary hover:text-primary"
+                    }`}
+                    title="Comparar faturamento anual entre diferentes anos (YoY)"
+                  >
+                    <TrendingUp className="w-4 h-4" />
+                    <span>{isComparingYears ? "Comparando Anos" : "Comparativo Anual"}</span>
+                  </Button>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold invisible block">Comparar Meses</label>
                   <Button
                     onClick={() => {
                       if (isComparingMonths) handleCloseComparison();
@@ -856,6 +954,21 @@ export default function Index({ store = "sobral" }: IndexProps) {
             />
           ) : activeView === "metas" ? (
             <MetasTracking ranking={dynamicRanking} timeline={data?.timeline ?? []} selectedMeta={selectedMeta} onMetaChange={setSelectedMeta} store={store} selectedMonth={selectedMonth} />
+          ) : isComparingGoals ? (
+            <GoalsComparisonView
+              store={store}
+              initialYear={selectedMonth.year}
+              onClose={handleCloseGoalsComparison}
+            />
+          ) : isComparingYears ? (
+            <YearlyComparisonView
+              store={store}
+              baseYear={yearlyBaseYear}
+              compareYear={yearlyCompareYear}
+              onBaseYearChange={setYearlyBaseYear}
+              onCompareYearChange={setYearlyCompareYear}
+              onClose={handleCloseYearlyComparison}
+            />
           ) : isComparingMonths ? (
             <MonthlyComparisonView
               store={store}

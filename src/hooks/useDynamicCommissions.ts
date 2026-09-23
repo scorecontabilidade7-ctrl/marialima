@@ -29,30 +29,35 @@ export function useDynamicCommissions(
       return ranking;
     }
 
-    // Calcula os pesos dos vendedores
+    // Calcula os pesos dos vendedores ignorando registros não-vendedores como 'LOJA'
     const sellerWithWeights = ranking.map((seller) => {
+      const isIgnored = !seller.vendedor || ["LOJA", "GERAL", "ADMIN"].includes(seller.vendedor.trim().toUpperCase());
+      if (isIgnored) {
+        return { seller, peso: 0, isIgnored: true };
+      }
       const cfg = configs?.find((c) => isSellerMatch(c.nome_vendedor, seller.vendedor));
       const peso = cfg?.peso_meta !== undefined && cfg?.peso_meta !== null ? Number(cfg.peso_meta) : 1;
-      return { seller, peso };
+      return { seller, peso, isIgnored: false };
     });
 
-    const totalWeight = sellerWithWeights.reduce((sum, item) => sum + item.peso, 0);
+    const realSellersCount = sellerWithWeights.filter((s) => !s.isIgnored).length || 1;
+    const totalWeight = sellerWithWeights.filter((s) => !s.isIgnored).reduce((sum, item) => sum + item.peso, 0) || 1;
 
     const metaMinimaLoja = goalData.meta_minima ?? 40000;
     const metaTop1Loja = goalData.meta_top1 ?? 60000;
     const metaTop2Loja = goalData.meta_top2 ?? 80000;
     const metaMasterLoja = goalData.meta_master ?? 150000;
 
-    return sellerWithWeights.map(({ seller, peso }) => {
-      // Vendedores com peso 0 não recebem meta nem comissão dinâmica baseada em meta
-      if (peso <= 0) {
+    return sellerWithWeights.map(({ seller, peso, isIgnored }) => {
+      // Vendedores ignorados ou com peso 0 não recebem meta nem comissão dinâmica baseada em meta
+      if (isIgnored || peso <= 0) {
         return {
           ...seller,
           comissao: 0,
         };
       }
 
-      const ratio = totalWeight > 0 ? peso / totalWeight : 1 / Math.max(ranking.length, 1);
+      const ratio = totalWeight > 0 ? peso / totalWeight : 1 / realSellersCount;
       const metaMinima = metaMinimaLoja * ratio;
       const metaTop1 = metaTop1Loja * ratio;
       const metaTop2 = metaTop2Loja * ratio;
