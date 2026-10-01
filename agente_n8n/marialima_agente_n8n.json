@@ -1,1513 +1,1649 @@
 {
-    "nodes":  [
+  "nodes": [
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('dados').item.json.session }}",
+        "sessionTTL": 300,
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+      "typeVersion": 1.5,
+      "position": [
+        1360,
+        848
+      ],
+      "id": "15aa380e-c845-46d4-a598-6300b50d0ce4",
+      "name": "Redis Chat Memory",
+      "credentials": {
+        "redis": {
+          "id": "UYXkIqr2CM5K3kAy",
+          "name": "Redis"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9e7c83c9-a700-431f-9fcf-abeb73988892",
+              "leftValue": "={{ $('dados').item.json.fromMe }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -576,
+        336
+      ],
+      "id": "dcb82476-0224-4edb-be04-c295e7d20938",
+      "name": "If",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "={{ $('dados').item.json.session }} block",
+        "value": "true",
+        "expire": true,
+        "ttl": 120
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -352,
+        224
+      ],
+      "id": "3682de99-6880-45cd-b5c3-b7c68aea63aa",
+      "name": "chaveBlock",
+      "credentials": {
+        "redis": {
+          "id": "UYXkIqr2CM5K3kAy",
+          "name": "Redis"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "messages": {
+          "messageValues": [
+            {
+              "type": "ai",
+              "message": "={{ $('message').item.json.message }}"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryManager",
+      "typeVersion": 1.1,
+      "position": [
+        -160,
+        -16
+      ],
+      "id": "c0aeec21-2966-4118-a819-5d6df1c9041d",
+      "name": "Chat Memory Manager"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "isBlocked",
+        "key": "={{ $('dados').item.json.session }} block",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -336,
+        592
+      ],
+      "id": "6163669a-36b1-45df-b585-15d8199db6df",
+      "name": "Redis",
+      "executeOnce": false,
+      "credentials": {
+        "redis": {
+          "id": "UYXkIqr2CM5K3kAy",
+          "name": "Redis"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "07becf50-cea5-41ad-8bfb-c0a09566a668",
+              "leftValue": "={{ $json.isBlocked }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -48,
+        752
+      ],
+      "id": "4b3c1ebc-877d-401e-b12d-1c198e312f0b",
+      "name": "If1",
+      "executeOnce": false,
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "messages": {
+          "messageValues": [
+            {
+              "type": "user",
+              "message": "={{ $('message').item.json.message }}"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryManager",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        512
+      ],
+      "id": "d3bf26f7-177a-41ed-959a-220d0ae53ee9",
+      "name": "insereMessageUser"
+    },
+    {
+      "parameters": {
+        "operation": "push",
+        "list": "={{ $('dados').item.json.session }} temp",
+        "messageData": "={{ $('message').item.json.message }}",
+        "tail": true
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        224,
+        912
+      ],
+      "id": "ab30be30-c004-4a4b-bc1e-8d8e46819ec2",
+      "name": "buffer",
+      "credentials": {
+        "redis": {
+          "id": "UYXkIqr2CM5K3kAy",
+          "name": "Redis"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        400,
+        912
+      ],
+      "id": "0743af00-09c9-4eb5-bb97-fc207d5548f4",
+      "name": "Wait",
+      "webhookId": "958c9813-e40f-4616-8001-104f82dbb6a8"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "messages",
+        "key": "={{ $('dados').item.json.session }} temp",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        576,
+        912
+      ],
+      "id": "35b8e0bf-4777-4e40-8882-4f620f204682",
+      "name": "buffer2",
+      "credentials": {
+        "redis": {
+          "id": "UYXkIqr2CM5K3kAy",
+          "name": "Redis"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b75d7054-582d-45f7-8cf8-55616ab0ace1",
+              "leftValue": "={{ $json.messages.last() }}",
+              "rightValue": "={{ $('message').item.json.message }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        752,
+        912
+      ],
+      "id": "6f167800-d83c-4d23-8f8e-a1dd22d336cb",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "={{ $('dados').item.json.session }} temp"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        960,
+        832
+      ],
+      "id": "3b180f15-942b-434c-ba6f-fba64d767576",
+      "name": "Redis1",
+      "credentials": {
+        "redis": {
+          "id": "UYXkIqr2CM5K3kAy",
+          "name": "Redis"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "50df01eb-7747-4d30-93dc-d7d73e416780",
+              "name": "message",
+              "value": "={{ $('Redis1').item.json.messages.join(\" \") }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1360,
+        272
+      ],
+      "id": "651d4e19-44bc-47da-894e-09f29c77d6b3",
+      "name": "mensagemFinal"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b25ffcb7-6db1-4229-8c9b-1025946c5f94",
+              "name": "message",
+              "value": "={{ $json.message }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -880,
+        336
+      ],
+      "id": "25c61ac4-dec9-44c8-ad31-813ffd26ff91",
+      "name": "message"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "777bbdf1-3e1e-43e1-ac32-5d9afe84f86b",
+              "name": "chatInput",
+              "value": "={{ $('Webhook').item.json.body.data.message.conversation }}",
+              "type": "string"
+            },
+            {
+              "id": "9faff688-53e0-47e8-867f-4abc646e2261",
+              "name": "session",
+              "value": "={{ $('Webhook').item.json.body.data.key.remoteJid }}",
+              "type": "string"
+            },
+            {
+              "id": "d671c824-3501-4570-8850-df0b37d2ef19",
+              "name": "whatsapp",
+              "value": "={{ $('Webhook').item.json.body.data.key.remoteJid }}",
+              "type": "string"
+            },
+            {
+              "id": "84c3ec47-0af2-4f19-bc74-0f4c8a498ca8",
+              "name": "base64",
+              "value": "={{ $('Webhook').item.json.body.data.message.audioMessage.url }}",
+              "type": "string"
+            },
+            {
+              "id": "057b7adc-1511-4cd1-bd8d-5bc390c86c56",
+              "name": "tipo",
+              "value": "={{ $('Webhook').item.json.body.data.messageType }}",
+              "type": "string"
+            },
+            {
+              "id": "ded6f3fe-1a1e-472b-b9f7-89b44b747fdc",
+              "name": "instancia",
+              "value": "={{ $('Webhook').item.json.body.instance }}",
+              "type": "string"
+            },
+            {
+              "id": "31e5a870-669f-47be-bb49-07690351882a",
+              "name": "id",
+              "value": "={{ $('Webhook').item.json.body.data.key.id }}",
+              "type": "string"
+            },
+            {
+              "id": "fcc522b7-e532-480d-84e0-88c8faf2ccd3",
+              "name": "wpp_tratado",
+              "value": "={{ $('Webhook').item.json.body.data.key.remoteJid.replace('@s.whatsapp.net', '') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2448,
+        352
+      ],
+      "id": "75e6a810-f763-4f35-95e5-b07ae4d2c4fa",
+      "name": "dados",
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "marialima",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -3520,
+        384
+      ],
+      "id": "09b9033b-402a-428a-9934-e7b6b11f25c7",
+      "name": "Webhook",
+      "webhookId": "595b88d1-f4d9-4b1a-90ed-02c2283ba497"
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "data.base64",
+        "options": {
+          "mimeType": "audio/mpeg"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        -1664,
+        560
+      ],
+      "id": "8598e185-b709-4c00-aef7-773cb89aa9cb",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
                   {
-                      "parameters":  {
-                                         "sessionIdType":  "customKey",
-                                         "sessionKey":  "={{ $('dados').item.json.session }}",
-                                         "sessionTTL":  300,
-                                         "contextWindowLength":  10
-                                     },
-                      "type":  "@n8n/n8n-nodes-langchain.memoryRedisChat",
-                      "typeVersion":  1.5,
-                      "position":  [
-                                       1392,
-                                       896
-                                   ],
-                      "id":  "044ae542-59d6-4a5f-93db-e35c66bbb1b5",
-                      "name":  "Redis Chat Memory",
-                      "credentials":  {
-                                          "redis":  {
-                                                        "id":  "UYXkIqr2CM5K3kAy",
-                                                        "name":  "Redis"
-                                                    }
-                                      }
-                  },
-                  {
-                      "parameters":  {
-                                         "conditions":  {
-                                                            "options":  {
-                                                                            "caseSensitive":  true,
-                                                                            "leftValue":  "",
-                                                                            "typeValidation":  "loose",
-                                                                            "version":  2
-                                                                        },
-                                                            "conditions":  [
-                                                                               {
-                                                                                   "id":  "9e7c83c9-a700-431f-9fcf-abeb73988892",
-                                                                                   "leftValue":  "={{ $('dados').item.json.fromMe }}",
-                                                                                   "rightValue":  "",
-                                                                                   "operator":  {
-                                                                                                    "type":  "boolean",
-                                                                                                    "operation":  "true",
-                                                                                                    "singleValue":  true
-                                                                                                }
-                                                                               }
-                                                                           ],
-                                                            "combinator":  "and"
-                                                        },
-                                         "looseTypeValidation":  true,
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.if",
-                      "typeVersion":  2.2,
-                      "position":  [
-                                       -544,
-                                       384
-                                   ],
-                      "id":  "3ab64374-8115-4968-a417-fecc6620c4d6",
-                      "name":  "If",
-                      "executeOnce":  false
-                  },
-                  {
-                      "parameters":  {
-                                         "operation":  "set",
-                                         "key":  "={{ $('dados').item.json.session }} block",
-                                         "value":  "true",
-                                         "expire":  true,
-                                         "ttl":  120
-                                     },
-                      "type":  "n8n-nodes-base.redis",
-                      "typeVersion":  1,
-                      "position":  [
-                                       -320,
-                                       272
-                                   ],
-                      "id":  "b8898bb7-4534-434e-8687-9f458d2ccd6c",
-                      "name":  "chaveBlock",
-                      "credentials":  {
-                                          "redis":  {
-                                                        "id":  "UYXkIqr2CM5K3kAy",
-                                                        "name":  "Redis"
-                                                    }
-                                      }
-                  },
-                  {
-                      "parameters":  {
-                                         "mode":  "insert",
-                                         "messages":  {
-                                                          "messageValues":  [
-                                                                                {
-                                                                                    "type":  "ai",
-                                                                                    "message":  "={{ $('message').item.json.message }}"
-                                                                                }
-                                                                            ]
-                                                      }
-                                     },
-                      "type":  "@n8n/n8n-nodes-langchain.memoryManager",
-                      "typeVersion":  1.1,
-                      "position":  [
-                                       -128,
-                                       32
-                                   ],
-                      "id":  "4683f841-6e26-400b-9aeb-a13e1d00df6c",
-                      "name":  "Chat Memory Manager"
-                  },
-                  {
-                      "parameters":  {
-                                         "operation":  "get",
-                                         "propertyName":  "isBlocked",
-                                         "key":  "={{ $('dados').item.json.session }} block",
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.redis",
-                      "typeVersion":  1,
-                      "position":  [
-                                       -304,
-                                       640
-                                   ],
-                      "id":  "3f8935fd-878e-4458-91bf-3016334d1090",
-                      "name":  "Redis",
-                      "executeOnce":  false,
-                      "credentials":  {
-                                          "redis":  {
-                                                        "id":  "UYXkIqr2CM5K3kAy",
-                                                        "name":  "Redis"
-                                                    }
-                                      }
-                  },
-                  {
-                      "parameters":  {
-                                         "conditions":  {
-                                                            "options":  {
-                                                                            "caseSensitive":  true,
-                                                                            "leftValue":  "",
-                                                                            "typeValidation":  "loose",
-                                                                            "version":  2
-                                                                        },
-                                                            "conditions":  [
-                                                                               {
-                                                                                   "id":  "07becf50-cea5-41ad-8bfb-c0a09566a668",
-                                                                                   "leftValue":  "={{ $json.isBlocked }}",
-                                                                                   "rightValue":  "",
-                                                                                   "operator":  {
-                                                                                                    "type":  "boolean",
-                                                                                                    "operation":  "exists",
-                                                                                                    "singleValue":  true
-                                                                                                }
-                                                                               }
-                                                                           ],
-                                                            "combinator":  "and"
-                                                        },
-                                         "looseTypeValidation":  true,
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.if",
-                      "typeVersion":  2.2,
-                      "position":  [
-                                       -16,
-                                       800
-                                   ],
-                      "id":  "626696b9-804b-4166-8685-c923622755e5",
-                      "name":  "If1",
-                      "executeOnce":  false,
-                      "alwaysOutputData":  false
-                  },
-                  {
-                      "parameters":  {
-                                         "mode":  "insert",
-                                         "messages":  {
-                                                          "messageValues":  [
-                                                                                {
-                                                                                    "type":  "user",
-                                                                                    "message":  "={{ $('message').item.json.message }}"
-                                                                                }
-                                                                            ]
-                                                      }
-                                     },
-                      "type":  "@n8n/n8n-nodes-langchain.memoryManager",
-                      "typeVersion":  1.1,
-                      "position":  [
-                                       272,
-                                       560
-                                   ],
-                      "id":  "919b23a0-718f-4018-95ce-6bdf0a3363e8",
-                      "name":  "insereMessageUser"
-                  },
-                  {
-                      "parameters":  {
-                                         "operation":  "push",
-                                         "list":  "={{ $('dados').item.json.session }} temp",
-                                         "messageData":  "={{ $('message').item.json.message }}",
-                                         "tail":  true
-                                     },
-                      "type":  "n8n-nodes-base.redis",
-                      "typeVersion":  1,
-                      "position":  [
-                                       256,
-                                       960
-                                   ],
-                      "id":  "d5c52b03-bef0-41a9-8084-f2ace2b1c7d9",
-                      "name":  "buffer",
-                      "credentials":  {
-                                          "redis":  {
-                                                        "id":  "UYXkIqr2CM5K3kAy",
-                                                        "name":  "Redis"
-                                                    }
-                                      }
-                  },
-                  {
-                      "parameters":  {
-
-                                     },
-                      "type":  "n8n-nodes-base.wait",
-                      "typeVersion":  1.1,
-                      "position":  [
-                                       432,
-                                       960
-                                   ],
-                      "id":  "7dd3ca7e-3be8-4337-901f-8590e7a6e1b9",
-                      "name":  "Wait",
-                      "webhookId":  "958c9813-e40f-4616-8001-104f82dbb6a8"
-                  },
-                  {
-                      "parameters":  {
-                                         "operation":  "get",
-                                         "propertyName":  "messages",
-                                         "key":  "={{ $('dados').item.json.session }} temp",
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.redis",
-                      "typeVersion":  1,
-                      "position":  [
-                                       608,
-                                       960
-                                   ],
-                      "id":  "818d6a13-a2e4-44af-9f39-e5c58d2f5687",
-                      "name":  "buffer2",
-                      "credentials":  {
-                                          "redis":  {
-                                                        "id":  "UYXkIqr2CM5K3kAy",
-                                                        "name":  "Redis"
-                                                    }
-                                      }
-                  },
-                  {
-                      "parameters":  {
-                                         "conditions":  {
-                                                            "options":  {
-                                                                            "caseSensitive":  true,
-                                                                            "leftValue":  "",
-                                                                            "typeValidation":  "strict",
-                                                                            "version":  2
-                                                                        },
-                                                            "conditions":  [
-                                                                               {
-                                                                                   "id":  "b75d7054-582d-45f7-8cf8-55616ab0ace1",
-                                                                                   "leftValue":  "={{ $json.messages.last() }}",
-                                                                                   "rightValue":  "={{ $('message').item.json.message }}",
-                                                                                   "operator":  {
-                                                                                                    "type":  "string",
-                                                                                                    "operation":  "equals",
-                                                                                                    "name":  "filter.operator.equals"
-                                                                                                }
-                                                                               }
-                                                                           ],
-                                                            "combinator":  "and"
-                                                        },
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.if",
-                      "typeVersion":  2.2,
-                      "position":  [
-                                       784,
-                                       960
-                                   ],
-                      "id":  "8c9fddf6-504a-476d-99be-d88377cfac7d",
-                      "name":  "If2"
-                  },
-                  {
-                      "parameters":  {
-                                         "operation":  "delete",
-                                         "key":  "={{ $('dados').item.json.session }} temp"
-                                     },
-                      "type":  "n8n-nodes-base.redis",
-                      "typeVersion":  1,
-                      "position":  [
-                                       992,
-                                       880
-                                   ],
-                      "id":  "0ac6f59e-5809-4cf1-b691-9c0f939963f5",
-                      "name":  "Redis1",
-                      "credentials":  {
-                                          "redis":  {
-                                                        "id":  "UYXkIqr2CM5K3kAy",
-                                                        "name":  "Redis"
-                                                    }
-                                      }
-                  },
-                  {
-                      "parameters":  {
-                                         "assignments":  {
-                                                             "assignments":  [
-                                                                                 {
-                                                                                     "id":  "50df01eb-7747-4d30-93dc-d7d73e416780",
-                                                                                     "name":  "message",
-                                                                                     "value":  "={{ $('Redis1').item.json.messages.join(\" \") }}",
-                                                                                     "type":  "string"
-                                                                                 }
-                                                                             ]
-                                                         },
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.set",
-                      "typeVersion":  3.4,
-                      "position":  [
-                                       1392,
-                                       320
-                                   ],
-                      "id":  "cf620136-34dc-4496-a26e-7400c0827593",
-                      "name":  "mensagemFinal"
-                  },
-                  {
-                      "parameters":  {
-                                         "assignments":  {
-                                                             "assignments":  [
-                                                                                 {
-                                                                                     "id":  "b25ffcb7-6db1-4229-8c9b-1025946c5f94",
-                                                                                     "name":  "message",
-                                                                                     "value":  "={{ $json.message }}",
-                                                                                     "type":  "string"
-                                                                                 }
-                                                                             ]
-                                                         },
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.set",
-                      "typeVersion":  3.4,
-                      "position":  [
-                                       -848,
-                                       384
-                                   ],
-                      "id":  "a9274c77-7d5d-4e4e-bce9-a06566bc2d5c",
-                      "name":  "message"
-                  },
-                  {
-                      "parameters":  {
-                                         "assignments":  {
-                                                             "assignments":  [
-                                                                                 {
-                                                                                     "id":  "777bbdf1-3e1e-43e1-ac32-5d9afe84f86b",
-                                                                                     "name":  "chatInput",
-                                                                                     "value":  "={{ $('Webhook').item.json.body.data.message.conversation }}",
-                                                                                     "type":  "string"
-                                                                                 },
-                                                                                 {
-                                                                                     "id":  "9faff688-53e0-47e8-867f-4abc646e2261",
-                                                                                     "name":  "session",
-                                                                                     "value":  "={{ $('Webhook').item.json.body.data.key.remoteJid }}",
-                                                                                     "type":  "string"
-                                                                                 },
-                                                                                 {
-                                                                                     "id":  "d671c824-3501-4570-8850-df0b37d2ef19",
-                                                                                     "name":  "whatsapp",
-                                                                                     "value":  "={{ $('Webhook').item.json.body.data.key.remoteJid }}",
-                                                                                     "type":  "string"
-                                                                                 },
-                                                                                 {
-                                                                                     "id":  "84c3ec47-0af2-4f19-bc74-0f4c8a498ca8",
-                                                                                     "name":  "base64",
-                                                                                     "value":  "={{ $('Webhook').item.json.body.data.message.audioMessage.url }}",
-                                                                                     "type":  "string"
-                                                                                 },
-                                                                                 {
-                                                                                     "id":  "057b7adc-1511-4cd1-bd8d-5bc390c86c56",
-                                                                                     "name":  "tipo",
-                                                                                     "value":  "={{ $('Webhook').item.json.body.data.messageType }}",
-                                                                                     "type":  "string"
-                                                                                 },
-                                                                                 {
-                                                                                     "id":  "ded6f3fe-1a1e-472b-b9f7-89b44b747fdc",
-                                                                                     "name":  "instancia",
-                                                                                     "value":  "={{ $('Webhook').item.json.body.instance }}",
-                                                                                     "type":  "string"
-                                                                                 },
-                                                                                 {
-                                                                                     "id":  "31e5a870-669f-47be-bb49-07690351882a",
-                                                                                     "name":  "id",
-                                                                                     "value":  "={{ $('Webhook').item.json.body.data.key.id }}",
-                                                                                     "type":  "string"
-                                                                                 },
-                                                                                 {
-                                                                                     "id":  "fcc522b7-e532-480d-84e0-88c8faf2ccd3",
-                                                                                     "name":  "wpp_tratado",
-                                                                                     "value":  "={{ $('Webhook').item.json.body.data.key.remoteJid.replace('@s.whatsapp.net', '') }}",
-                                                                                     "type":  "string"
-                                                                                 }
-                                                                             ]
-                                                         },
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.set",
-                      "typeVersion":  3.4,
-                      "position":  [
-                                       -2416,
-                                       400
-                                   ],
-                      "id":  "331a1c66-d7d6-43f0-8caf-df3880d6d493",
-                      "name":  "dados",
-                      "alwaysOutputData":  true,
-                      "executeOnce":  true
-                  },
-                  {
-                      "parameters":  {
-                                         "httpMethod":  "POST",
-                                         "path":  "marialima",
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.webhook",
-                      "typeVersion":  2.1,
-                      "position":  [
-                                       -3488,
-                                       432
-                                   ],
-                      "id":  "a92a312d-9f40-4884-b5d6-e6dd64304aa1",
-                      "name":  "Webhook",
-                      "webhookId":  "595b88d1-f4d9-4b1a-90ed-02c2283ba497"
-                  },
-                  {
-                      "parameters":  {
-                                         "resource":  "messages-api",
-                                         "instanceName":  "={{ dados.first().json.instancia || Webhook.first().json.body.instance || 'DDI' }}",
-                                         "remoteJid":  "={{ dados.first().json.whatsapp || Webhook.first().json.body.data.key.remoteJid }}",
-                                         "messageText":  "={{ .output || .text }}",
-                                         "options_message":  {
-                                                                 "delay":  1200
-                                                             }
-                                     },
-                      "type":  "n8n-nodes-evolution-api.evolutionApi",
-                      "typeVersion":  1,
-                      "position":  [
-                                       2848,
-                                       320
-                                   ],
-                      "id":  "bcdca2f8-8ebb-4bee-8e91-0b6d41caef98",
-                      "name":  "Enviar texto",
-                      "credentials":  {
-                                          "evolutionApi":  {
-                                                               "id":  "pXMX5bykkTaDf7hr",
-                                                               "name":  "evolution"
-                                                           }
-                                      }
-                  },
-                  {
-                      "parameters":  {
-                                         "operation":  "toBinary",
-                                         "sourceProperty":  "data.base64",
-                                         "options":  {
-                                                         "mimeType":  "audio/mpeg"
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.convertToFile",
-                      "typeVersion":  1.1,
-                      "position":  [
-                                       -1632,
-                                       608
-                                   ],
-                      "id":  "cf9383f5-78b4-4f7d-b980-51451be69bd5",
-                      "name":  "Convert to File"
-                  },
-                  {
-                      "parameters":  {
-                                         "rules":  {
-                                                       "values":  [
-                                                                      {
-                                                                          "conditions":  {
-                                                                                             "options":  {
-                                                                                                             "caseSensitive":  true,
-                                                                                                             "leftValue":  "",
-                                                                                                             "typeValidation":  "strict",
-                                                                                                             "version":  2
-                                                                                                         },
-                                                                                             "conditions":  [
-                                                                                                                {
-                                                                                                                    "id":  "1e1df4de-37a6-41e2-8deb-18076f5fb9ea",
-                                                                                                                    "leftValue":  "={{ $json.tipo }}",
-                                                                                                                    "rightValue":  "conversation",
-                                                                                                                    "operator":  {
-                                                                                                                                     "type":  "string",
-                                                                                                                                     "operation":  "equals",
-                                                                                                                                     "name":  "filter.operator.equals"
-                                                                                                                                 }
-                                                                                                                }
-                                                                                                            ],
-                                                                                             "combinator":  "and"
-                                                                                         }
-                                                                      },
-                                                                      {
-                                                                          "conditions":  {
-                                                                                             "options":  {
-                                                                                                             "caseSensitive":  true,
-                                                                                                             "leftValue":  "",
-                                                                                                             "typeValidation":  "strict",
-                                                                                                             "version":  2
-                                                                                                         },
-                                                                                             "conditions":  [
-                                                                                                                {
-                                                                                                                    "leftValue":  "={{ $json.tipo }}",
-                                                                                                                    "rightValue":  "audioMessage",
-                                                                                                                    "operator":  {
-                                                                                                                                     "type":  "string",
-                                                                                                                                     "operation":  "equals"
-                                                                                                                                 },
-                                                                                                                    "id":  "4bef679d-b793-4f55-8de4-1ca43e0ba042"
-                                                                                                                }
-                                                                                                            ],
-                                                                                             "combinator":  "and"
-                                                                                         }
-                                                                      }
-                                                                  ]
-                                                   },
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.switch",
-                      "typeVersion":  3.2,
-                      "position":  [
-                                       -2192,
-                                       400
-                                   ],
-                      "id":  "6eafda8b-3465-49c3-aa1d-28fd55232303",
-                      "name":  "Switch"
-                  },
-                  {
-                      "parameters":  {
-                                         "assignments":  {
-                                                             "assignments":  [
-                                                                                 {
-                                                                                     "id":  "a61959f4-ba0c-467e-8352-71bd69dbceb4",
-                                                                                     "name":  "message",
-                                                                                     "value":  "={{ $json.chatInput }}",
-                                                                                     "type":  "string"
-                                                                                 }
-                                                                             ]
-                                                         },
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.set",
-                      "typeVersion":  3.4,
-                      "position":  [
-                                       -1536,
-                                       384
-                                   ],
-                      "id":  "5d1f1447-0fc8-4924-ade4-80b556e60200",
-                      "name":  "textMessage"
-                  },
-                  {
-                      "parameters":  {
-                                         "method":  "POST",
-                                         "url":  "https://api.groq.com/openai/v1/audio/transcriptions",
-                                         "authentication":  "predefinedCredentialType",
-                                         "nodeCredentialType":  "groqApi",
-                                         "sendBody":  true,
-                                         "contentType":  "multipart-form-data",
-                                         "bodyParameters":  {
-                                                                "parameters":  [
-                                                                                   {
-                                                                                       "name":  "model",
-                                                                                       "value":  "whisper-large-v3-turbo"
-                                                                                   },
-                                                                                   {
-                                                                                       "name":  "temperature",
-                                                                                       "value":  "0"
-                                                                                   },
-                                                                                   {
-                                                                                       "name":  "response_format",
-                                                                                       "value":  "verbose_json"
-                                                                                   },
-                                                                                   {
-                                                                                       "name":  "language",
-                                                                                       "value":  "pt"
-                                                                                   },
-                                                                                   {
-                                                                                       "parameterType":  "formBinaryData",
-                                                                                       "name":  "file",
-                                                                                       "inputDataFieldName":  "data"
-                                                                                   }
-                                                                               ]
-                                                            },
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.httpRequest",
-                      "typeVersion":  4.2,
-                      "position":  [
-                                       -1424,
-                                       608
-                                   ],
-                      "id":  "e624f718-86a9-4d4e-9a66-256187735c3b",
-                      "name":  "HTTP Request",
-                      "credentials":  {
-                                          "groqApi":  {
-                                                          "id":  "JyGpIRxuuZEUp9XO",
-                                                          "name":  "GroqLucas"
-                                                      }
-                                      }
-                  },
-                  {
-                      "parameters":  {
-                                         "assignments":  {
-                                                             "assignments":  [
-                                                                                 {
-                                                                                     "id":  "3fe40034-5bed-4628-8d48-5928e5b9eebe",
-                                                                                     "name":  "message",
-                                                                                     "value":  "={{ $json.text }}",
-                                                                                     "type":  "string"
-                                                                                 }
-                                                                             ]
-                                                         },
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.set",
-                      "typeVersion":  3.4,
-                      "position":  [
-                                       -1216,
-                                       608
-                                   ],
-                      "id":  "6e9cf842-9327-4a4d-9eba-9b7f24170a38",
-                      "name":  "transcricao"
-                  },
-                  {
-                      "parameters":  {
-                                         "resource":  "chat-api",
-                                         "operation":  "get-media-base64",
-                                         "instanceName":  "={{ $('dados').item.json.instancia }}",
-                                         "messageId":  "={{ $('dados').item.json.id }}"
-                                     },
-                      "type":  "n8n-nodes-evolution-api.evolutionApi",
-                      "typeVersion":  1,
-                      "position":  [
-                                       -1872,
-                                       608
-                                   ],
-                      "id":  "20300471-6539-4d28-9235-b5ec299fd67e",
-                      "name":  "Obter Midia em Base64",
-                      "credentials":  {
-                                          "evolutionApi":  {
-                                                               "id":  "pXMX5bykkTaDf7hr",
-                                                               "name":  "evolution"
-                                                           }
-                                      }
-                  },
-                  {
-                      "parameters":  {
-                                         "descriptionType":  "manual",
-                                         "toolDescription":  "\"Busca o historico diario de um vendedor (vendas de ontem, vendas de um dia exato). \nRetorna ticket mdio, metas diarias (se bateu a meta daquele dia) e quanto faltou no dia. O argumento 'busca' pode ser \no nome. O argumento 'data_venda' deve ser YYYY-MM-DD.\"",
-                                         "operation":  "executeQuery",
-                                         "query":  "SELECT \n  nome_vendedor,\n  loja,\n  data_venda,\n  quantidade_vendas,\n  valor_total_vendido,\n  \nticket_medio,\n  meta_minima_diaria,\n  meta_top1_diaria,\n  meta_top2_diaria,\n  meta_master_diaria,\n  \nnivel_alcancado_diario,\n  gap_proxima_meta_diaria,\n  comissao_fixa_diaria\nFROM marialima_vw_ai_performance_diaria \n\nWHERE nome_vendedor ILIKE '%' || $1 || '%'\nAND data_venda = $2::date;",
-                                         "options":  {
-                                                         "queryReplacement":  "={{ $fromAI('busca') }}\n{{ $fromAI('data_venda') }}"
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.postgresTool",
-                      "typeVersion":  2.6,
-                      "position":  [
-                                       2208,
-                                       736
-                                   ],
-                      "id":  "e9944956-a77e-4db6-ad6a-a57fefcb3841",
-                      "name":  "tool_performa_diaria_vendedor",
-                      "credentials":  {
-                                          "postgres":  {
-                                                           "id":  "GE99tmxRz3vNhLqD",
-                                                           "name":  "Postgres - ProjectsGerais Score"
-                                                       }
-                                      }
-                  },
-                  {
-                      "parameters":  {
-                                         "descriptionType":  "manual",
-                                         "toolDescription":  "\"Busca o historico detalhado, alcance de metas, faturamento e comissao estimada de um \nvendedor especifico em um mes. O argumento 'busca' pode ser o nome do vendedor. O argumento 'mes_ano' deve ser no \nformato YYYY-MM.\"",
-                                         "operation":  "executeQuery",
-                                         "query":  "SELECT \n  nome_vendedor,\n  loja,\n  year_month,\n  quantidade_vendas,\n  valor_total_vendido,\n  \nmeta_minima_individual,\n  meta_top1_individual,\n  meta_top2_individual,\n  meta_master_individual,\n  \nnivel_alcancado,\n  gap_proxima_meta,\n  comissao_fixa_estimada,\n  comissao_dinamica_estimada\nFROM \nmarialima_vw_ai_performance_mensal \nWHERE nome_vendedor ILIKE '%' || $1 || '%'\nAND year_month = $2;",
-                                         "options":  {
-                                                         "queryReplacement":  "={{ $fromAI('busca') }}\n{{ $fromAI('mes_ano') }}"
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.postgresTool",
-                      "typeVersion":  2.6,
-                      "position":  [
-                                       1968,
-                                       672
-                                   ],
-                      "id":  "97effa00-d446-4759-8edf-db32eeea9dba",
-                      "name":  "tool_performa_mensal_vendedor",
-                      "credentials":  {
-                                          "postgres":  {
-                                                           "id":  "GE99tmxRz3vNhLqD",
-                                                           "name":  "Postgres - ProjectsGerais Score"
-                                                       }
-                                      }
-                  },
-                  {
-                      "parameters":  {
-                                         "descriptionType":  "manual",
-                                         "toolDescription":  "\"Busca os resultados de vendas DIARIOS de uma loja especifica (ex: 'sobral' ou \n'itapipoca'). Use para responder perguntas como 'quanto Sobral vendeu ontem/hoje?'. O argumento 'data_venda' deve ser \nYYYY-MM-DD.\"",
-                                         "operation":  "executeQuery",
-                                         "query":  "SELECT \n    loja,\n    data_venda,\n    COUNT(DISTINCT nome_vendedor) AS qtd_vendedores,\n    \nSUM(valor_total_vendido) AS total_vendido,\n    SUM(quantidade_vendas) AS volume_vendas,\n    SUM(meta_minima_diaria) \nAS meta_minima_diaria_loja,\n    SUM(meta_top1_diaria) AS meta_top1_diaria_loja,\n    SUM(meta_top2_diaria) AS \nmeta_top2_diaria_loja,\n    SUM(meta_master_diaria) AS meta_master_diaria_loja,\n    SUM(comissao_fixa_diaria) AS \ncusto_comissaoes_fixas\nFROM marialima_vw_ai_performance_diaria\nWHERE loja ILIKE '%' || $1 || '%'\n  AND data_venda = \n$2::date\nGROUP BY loja, data_venda;",
-                                         "options":  {
-                                                         "queryReplacement":  "={{ $fromAI('nome_loja') }}\n{{ $fromAI('data_venda') }}"
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.postgresTool",
-                      "typeVersion":  2.6,
-                      "position":  [
-                                       2384,
-                                       784
-                                   ],
-                      "id":  "d6d5eac1-b38c-4c4f-b481-0793549c09bb",
-                      "name":  "tool_resumo_diario_loja",
-                      "credentials":  {
-                                          "postgres":  {
-                                                           "id":  "GE99tmxRz3vNhLqD",
-                                                           "name":  "Postgres - ProjectsGerais Score"
-                                                       }
-                                      }
-                  },
-                  {
-                      "parameters":  {
-                                         "descriptionType":  "manual",
-                                         "toolDescription":  "\"Busca os resultados consolidados MENSAIS de uma loja especifica (ex: 'sobral' ou \n'itapipoca'). Retorna volume de vendas e faturamento total da loja no mes. O argumento 'mes_ano' deve ser no formato \nYYYY-MM.\"",
-                                         "operation":  "executeQuery",
-                                         "query":  "SELECT \n    loja,\n    year_month,\n    COUNT(DISTINCT nome_vendedor) AS qtd_vendedores,\n    \nSUM(valor_total_vendido) AS total_vendido,\n    SUM(quantidade_vendas) AS volume_vendas,\n    \nSUM(meta_minima_individual) AS meta_minima_loja,\n    SUM(meta_top1_individual) AS meta_top1_loja,\n    \nSUM(meta_top2_individual) AS meta_top2_loja,\n    SUM(meta_master_individual) AS meta_master_loja,\n    \nSUM(comissao_fixa_estimada) AS custo_comissaoes_fixas,\n    SUM(comissao_dinamica_estimada) AS \ncusto_comissaoes_dinamicas\nFROM marialima_vw_ai_performance_mensal\nWHERE loja ILIKE '%' || $1 || '%'\n  AND \nyear_month = $2\nGROUP BY loja, year_month;",
-                                         "options":  {
-                                                         "queryReplacement":  "={{ $fromAI('nome_loja') }}\n{{ $fromAI('mes_ano') }}"
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.postgresTool",
-                      "typeVersion":  2.6,
-                      "position":  [
-                                       2128,
-                                       576
-                                   ],
-                      "id":  "945f0842-16c3-4b32-9779-513daf23fef0",
-                      "name":  "tool_resumo_loja",
-                      "credentials":  {
-                                          "postgres":  {
-                                                           "id":  "GE99tmxRz3vNhLqD",
-                                                           "name":  "Postgres - ProjectsGerais Score"
-                                                       }
-                                      }
-                  },
-                  {
-                      "parameters":  {
-                                         "descriptionType":  "manual",
-                                         "toolDescription":  "\"Ranking MENSAL dos melhores vendedores da empresa. Recebe 'mes_ano' (YYYY-MM) e \n'criterio' (pode ser 'faturamento', 'volume' ou 'ticket_medio'). Retorna os melhores vendedores no mes ordenados pelo \ncriterio escolhido.\"",
-                                         "operation":  "executeQuery",
-                                         "query":  "SELECT\n  nome_vendedor,\n  loja,\n  valor_total_vendido,\n  quantidade_vendas,\n  \n(valor_total_vendido / NULLIF(quantidade_vendas, 0)) AS ticket_medio,\n  nivel_alcancado\nFROM \nmarialima_vw_ai_performance_mensal\nWHERE year_month = $1\nORDER BY\n  CASE WHEN $2 = 'ticket_medio' THEN \n(valor_total_vendido / NULLIF(quantidade_vendas, 0)) END DESC,\n  CASE WHEN $2 = 'volume' THEN quantidade_vendas END \nDESC,\n  CASE WHEN $2 = 'faturamento' THEN valor_total_vendido END DESC,\n  valor_total_vendido DESC\nLIMIT 15;",
-                                         "options":  {
-                                                         "queryReplacement":  "={{ $fromAI('mes_ano') }}\n{{ $fromAI('criterio') }}",
-                                                         "treatQueryParametersInSingleQuotesAsText":  false
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.postgresTool",
-                      "typeVersion":  2.6,
-                      "position":  [
-                                       2480,
-                                       640
-                                   ],
-                      "id":  "9b2d2f17-1391-46a5-b72e-f5e000220315",
-                      "name":  "tool_ranking_vendedores",
-                      "credentials":  {
-                                          "postgres":  {
-                                                           "id":  "GE99tmxRz3vNhLqD",
-                                                           "name":  "Postgres - ProjectsGerais Score"
-                                                       }
-                                      }
-                  },
-                  {
-                      "parameters":  {
-                                         "descriptionType":  "manual",
-                                         "toolDescription":  "\"Resumo Global DIRIO da Empresa Inteira. Soma todas as lojas em um DIA ESPECFICO. Usado \nAPENAS para responder 'quanto a empresa vendeu hoje/ontem?'. Envie 'data_venda' (YYYY-MM-DD).\"",
-                                         "operation":  "executeQuery",
-                                         "query":  "SELECT \n    data_venda,\n    SUM(valor_total_vendido) AS total_vendido_global,\n    \nSUM(quantidade_vendas) AS transacoes_globais,\n    COUNT(DISTINCT nome_vendedor) AS vendedores_ativos,\n    \nSUM(meta_minima_diaria) AS meta_minima_diaria_global,\n    SUM(meta_top1_diaria) AS meta_top1_diaria_global,\n    \nSUM(meta_top2_diaria) AS meta_top2_diaria_global,\n    SUM(meta_master_diaria) AS meta_master_diaria_global,\n    \nSUM(comissao_fixa_diaria) AS total_comissaoes_fixas\nFROM marialima_vw_ai_performance_diaria\nWHERE data_venda = \n$1::date\nGROUP BY data_venda;",
-                                         "options":  {
-                                                         "queryReplacement":  "={{ $fromAI('data_venda') }}"
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.postgresTool",
-                      "typeVersion":  2.6,
-                      "position":  [
-                                       2800,
-                                       800
-                                   ],
-                      "id":  "0aa6840d-e36e-448f-95f3-0cef6e2bfa73",
-                      "name":  "tool_resumo_global_diario_empresa",
-                      "credentials":  {
-                                          "postgres":  {
-                                                           "id":  "GE99tmxRz3vNhLqD",
-                                                           "name":  "Postgres - ProjectsGerais Score"
-                                                       }
-                                      }
-                  },
-                  {
-                      "parameters":  {
-                                         "descriptionType":  "manual",
-                                         "toolDescription":  "\"Resumo Global MENSAL da Empresa Inteira. Soma todas as lojas no mes. Usado para \n'resultado global do mes'. Envie 'mes_ano' (YYYY-MM).\"",
-                                         "operation":  "executeQuery",
-                                         "query":  "SELECT \n    year_month,\n    SUM(valor_total_vendido) AS total_vendido_global,\n    \nSUM(quantidade_vendas) AS transacoes_globais,\n    COUNT(DISTINCT nome_vendedor) AS vendedores_ativos,\n    \nSUM(meta_minima_individual) AS meta_minima_global,\n    SUM(meta_top1_individual) AS meta_top1_global,\n    \nSUM(meta_top2_individual) AS meta_top2_global,\n    SUM(meta_master_individual) AS meta_master_global,\n    \nSUM(comissao_fixa_estimada) AS total_comissaoes_fixas,\n    SUM(comissao_dinamica_estimada) AS \ntotal_comissaoes_dinamicas\nFROM marialima_vw_ai_performance_mensal\nWHERE year_month = $1\nGROUP BY year_month;",
-                                         "options":  {
-                                                         "queryReplacement":  "={{ $fromAI('mes_ano') }}"
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.postgresTool",
-                      "typeVersion":  2.6,
-                      "position":  [
-                                       2608,
-                                       752
-                                   ],
-                      "id":  "656a8e83-92ed-4d8a-b491-3619c04fb3c6",
-                      "name":  "tool_resumo_global_empresa",
-                      "credentials":  {
-                                          "postgres":  {
-                                                           "id":  "GE99tmxRz3vNhLqD",
-                                                           "name":  "Postgres - ProjectsGerais Score"
-                                                       }
-                                      }
-                  },
-                  {
-                      "parameters":  {
-                                         "promptType":  "define",
-                                         "text":  "={{ $json.message }}",
-                                         "options":  {
-                                                         "systemMessage":  "=# System Prompt - Assistente Comercial Maria Lima\n\n> Hoje ÃƒÆ’Ã‚Â© dia *{{ $now.setZone('America/Sao_Paulo').toFormat('dd/MM/yyyy') }}*. O mÃƒÆ’Ã‚Âªs atual no formato YYYY-MM ÃƒÆ’Ã‚Â© *{{ $now.setZone('America/Sao_Paulo').toFormat('yyyy-MM') }}*.\n\nVocÃƒÆ’Ã‚Âª ÃƒÆ’Ã‚Â© um assistente de inteligÃƒÆ’Ã‚Âªncia comercial altamente detalhista, explicativo e objetivo focado em extrair dados de vendas da Maria Lima.\nSua funÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o ÃƒÆ’Ã‚Â© responder dÃƒÆ’Ã‚Âºvidas de gestores, diretores (CEO) e vendedores sobre faturamento e metas, baseando-se EXCLUSIVAMENTE nas ferramentas (tools) fornecidas. \n\n## Suas Ferramentas SQL\n1. `tool_performa_mensal_vendedor`: Vendas de um VENDEDOR em um mÃƒÆ’Ã‚Âªs todo (MENSAL).\n2. `tool_performa_diaria_vendedor`: Vendas de um VENDEDOR em um dia exato (DIÃƒÆ’Ã‚ÂRIO).\n3. `tool_resumo_loja`: Vendas consolidadas de uma LOJA no mÃƒÆ’Ã‚Âªs todo (MENSAL).\n4. `tool_resumo_diario_loja`: Vendas consolidadas de uma LOJA em um dia exato (DIÃƒÆ’Ã‚ÂRIO). Use para responder \"quanto Sobral vendeu hoje/ontem?\".\n5. `tool_ranking_vendedores`: Rankings de vendedores no mÃƒÆ’Ã‚Âªs.\n6. `tool_ranking_diario_vendedores`: Ranking de vendedores em um DIA EXATO (DIÃƒÆ’Ã‚ÂRIO). Use para \"ranking de hoje\".\n7. `tool_resumo_global_empresa`: Faturamento global MENSAL de toda a empresa somada.\n8. `tool_resumo_global_diario_empresa`: Faturamento global DIÃƒÆ’Ã‚ÂRIO de toda a empresa somada. Use para \"quanto a empresa vendeu hoje?\".\n9. `tool_metas_semanais_vendedores`: Metas e performance SEMANAIS dos VENDEDORES. Use SEMPRE que perguntarem sobre \"meta semanal dos vendedores\", \"meta da semana de todos os vendedores de Sobral/Itapipoca\", \"como estamos na meta semanal\", ou a meta semanal de um vendedor especÃƒÆ’Ã‚Â­fico. Retorna o total vendido na semana, metas da semana (MÃƒÆ’Ã‚Â­nima, Top 1, Top 2, Master), % atingido, nÃƒÆ’Ã‚Â­vel alcanÃƒÆ’Ã‚Â§ado e quanto falta.\n10. `tool_resumo_semanal_loja`: Resumo e metas SEMANAIS consolidadas de uma LOJA ou da EMPRESA inteira somada. Use para \"como a loja de Sobral estÃƒÆ’Ã‚Â¡ na meta semanal?\", \"qual o faturamento semanal da loja/empresa?\", \"como estamos na meta da semana?\".\n\n## Tratamento de Datas (MUITO IMPORTANTE)\n- Se o usuÃƒÆ’Ã‚Â¡rio pedir \"mÃƒÆ’Ã‚Âªs atual\", \"este mÃƒÆ’Ã‚Âªs\", \"hoje\" ou \"agora\", use OBRIGATORIAMENTE a variÃƒÆ’Ã‚Â¡vel do mÃƒÆ’Ã‚Âªs atual `{{ $now.setZone('America/Sao_Paulo').toFormat('yyyy-MM') }}` para o parÃƒÆ’Ã‚Â¢metro `mes_ano`.\n- Para buscar dados de um ÃƒÆ’Ã…Â¡NICO DIA (ex: \"ontem\", \"hoje\", \"dia 15\"), nÃƒÆ’Ã‚Â£o use o formato YYYY-MM. VocÃƒÆ’Ã‚Âª deve converter para a data exata no formato `YYYY-MM-DD` (ex: 2026-06-15) e chamar as FERRAMENTAS DIÃƒÆ’Ã‚ÂRIAS (seja para vendedor, loja ou global) dependendo do que o usuÃƒÆ’Ã‚Â¡rio pediu.\n- **Semanas e Metas Semanais (REGRA FUNDAMENTAL):**\n  - O ciclo comercial semanal vai de **Segunda-feira** a **Domingo** (ou SÃƒÆ’Ã‚Â¡bado).\n  - Quando o usuÃƒÆ’Ã‚Â¡rio perguntar sobre a **\"semana atual\"**, **\"esta semana\"**, **\"meta semanal\"**, **\"como estamos na meta semanal\"** ou **\"meta da semana\"**, calcule a data da **Segunda-feira** da semana como `data_inicio` e o **Domingo** como `data_fim` no formato `YYYY-MM-DD` com base na data de hoje (`{{ $now.setZone('America/Sao_Paulo').toFormat('dd/MM/yyyy') }}`).\n  - Se o usuÃƒÆ’Ã‚Â¡rio perguntar sobre a **\"semana passada\"**, calcule a Segunda-feira e o Domingo da semana anterior.\n  - Para dÃƒÆ’Ã‚Âºvidas sobre **todos os vendedores de uma loja na semana** (ex: *\"Como estamos na meta semanal de todos os vendedores de Sobral?\"*):\n    - Chame OBRIGATORIAMENTE `tool_metas_semanais_vendedores` passando `nome_loja: \"Sobral\"`, `data_inicio` e `data_fim` da semana, deixando `vendedor: \"\"` vazio para retornar todos.\n    - Se desejar enriquecer a resposta com os totais consolidados da loja, chame tambÃƒÆ’Ã‚Â©m `tool_resumo_semanal_loja` com `nome_loja: \"Sobral\"`.\n  - Para dÃƒÆ’Ã‚Âºvidas sobre a **meta semanal de um vendedor especÃƒÆ’Ã‚Â­fico** (ex: *\"Qual a meta semanal da Ana Silva?\"*), chame `tool_metas_semanais_vendedores` passando `vendedor: \"Ana Silva\"`.\n  - Para dÃƒÆ’Ã‚Âºvidas sobre o **faturamento ou meta semanal da loja como um todo** (ex: *\"Como a filial de Sobral estÃƒÆ’Ã‚Â¡ na meta semanal?\"*), chame `tool_resumo_semanal_loja` com `nome_loja: \"Sobral\"`.\n- Se o usuÃƒÆ’Ã‚Â¡rio falar de meses passados (ex: \"mÃƒÆ’Ã‚Âªs passado\", \"maio\"), calcule ou infira o formato `YYYY-MM` com base na data de hoje.\n- **Trimestres:** Calcule RIGOROSAMENTE com base no calendÃƒÆ’Ã‚Â¡rio anual (Q1: Jan a Mar | Q2: Abr a Jun | Q3: Jul a Set | Q4: Out a Dez). Exemplo: Se estamos em junho, o \"trimestre atual\" ÃƒÆ’Ã‚Â© o Q2 (abril, maio e junho) e o \"trimestre passado\" ÃƒÆ’Ã‚Â© o Q1 (janeiro, fevereiro e marÃƒÆ’Ã‚Â§o). NUNCA invente perÃƒÆ’Ã‚Â­odos trimestrais sobrepostos (ex: marÃƒÆ’Ã‚Â§o a maio nÃƒÆ’Ã‚Â£o ÃƒÆ’Ã‚Â© um trimestre oficial). Chame a ferramenta para cada mÃƒÆ’Ã‚Âªs individualmente.\n- Nunca mande nomes de meses em texto para as ferramentas, SEMPRE passe no formato exato `YYYY-MM` (mensal), `YYYY-MM-DD` (diÃƒÆ’Ã‚Â¡rio) ou os argumentos `data_inicio` e `data_fim` (semanal).\n\n## Regras InegociÃƒÆ’Ã‚Â¡veis\n1. **Nome da Empresa vs Vendedora (CRÃƒÆ’Ã‚ÂTICO):** A nossa empresa se chama \"Maria Lima\". Se o usuÃƒÆ’Ã‚Â¡rio perguntar sobre as vendas da \"Maria Lima\", ele estÃƒÆ’Ã‚Â¡ quase sempre se referindo ÃƒÆ’Ã‚Â  empresa inteira ou ÃƒÆ’Ã‚Â  uma loja especÃƒÆ’Ã‚Â­fica (ex: \"Maria Lima Sobral\" = loja de Sobral). NUNCA busque por uma vendedora chamada Maria Lima a menos que o usuÃƒÆ’Ã‚Â¡rio deixe muito explÃƒÆ’Ã‚Â­cito que estÃƒÆ’Ã‚Â¡ falando de uma funcionÃƒÆ’Ã‚Â¡ria.\n2. **Foco Exclusivo (Guardrail):** VocÃƒÆ’Ã‚Âª ÃƒÆ’Ã‚Â© ESTRITAMENTE um assistente comercial da Maria Lima. Se o usuÃƒÆ’Ã‚Â¡rio perguntar sobre QUALQUER outro assunto (clima, piadas, programaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o, conhecimentos gerais), recuse-se a responder educadamente e afirme: \"Sou programado exclusivamente para falar sobre as vendas da Maria Lima.\"\n3. **Zero CÃƒÆ’Ã‚Â¡lculo Inventado:** Proibido Fazer CÃƒÆ’Ã‚Â¡lculos Complexos de ComissÃƒÆ’Ã‚Âµes e Metas do zero. O banco de dados jÃƒÆ’Ã‚Â¡ envia as colunas calculadas. Se precisar fazer somas simples (ex: somar 3 meses para um trimestre), pode fazer. Mas nÃƒÆ’Ã‚Â£o tente deduzir a meta sozinho.\n4. **Explicativo:** Diretores e gestores gostam de ler dados bem mastigados. Sempre traga *insights* nas respostas. Se uma loja caiu de faturamento em relaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o a outro mÃƒÆ’Ã‚Âªs, destaque a queda em percentual. Se um vendedor bateu a meta semanal ou mensal, comemore.\n5. **MÃƒÆ’Ã‚Âºltiplos Nomes:** Se a busca por um vendedor retornar vÃƒÆ’Ã‚Â¡rios nomes, liste-os e pergunte de qual a pessoa estÃƒÆ’Ã‚Â¡ falando.\n6. **Veracidade:** Nunca minta ou invente dados. Se a ferramenta nÃƒÆ’Ã‚Â£o retornar resultados, diga claramente: \"NÃƒÆ’Ã‚Â£o encontrei registros para este vendedor/loja neste perÃƒÆ’Ã‚Â­odo.\"\n7. **ApresentaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o de Capacidades:** Se o usuÃƒÆ’Ã‚Â¡rio perguntar o que vocÃƒÆ’Ã‚Âª sabe fazer, quais indicadores acompanha ou pedir exemplos, seja proativo. Diga que vocÃƒÆ’Ã‚Âª consolida dados de faturamento (mensal, semanal e diÃƒÆ’Ã‚Â¡rio), metas semanais e mensais por vendedor ou filial, ticket mÃƒÆ’Ã‚Â©dio, rankings (por volume, ticket ou faturamento) e comissÃƒÆ’Ã‚Âµes. ForneÃƒÆ’Ã‚Â§a exemplos prÃƒÆ’Ã‚Â¡ticos do que o usuÃƒÆ’Ã‚Â¡rio pode te perguntar (ex: *\"Como estamos na meta semanal de todos os vendedores de Sobral?\"*, *\"Quanto a loja de Sobral faturou ontem?\"*, *\"Quem sÃƒÆ’Ã‚Â£o os top 5 vendedores da semana?\"*).\n\n## Estilo e FormataÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o da Resposta (MUITO IMPORTANTE PARA WHATSAPP)\nSua resposta final serÃƒÆ’Ã‚Â¡ enviada pelo WhatsApp. Portanto, vocÃƒÆ’Ã‚Âª ÃƒÆ’Ã‚Â© OBRIGADO a usar a formataÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o nativa do WhatsApp e NÃƒÆ’Ã†â€™O o Markdown tradicional.\n- Use UM ASTERISCO para negrito: `*texto*` (NUNCA use `**texto**`).\n- Use UNDERLINE para itÃƒÆ’Ã‚Â¡lico: `_texto_`.\n- NÃƒÆ’Ã†â€™O use hashtags `#` ou `##` para tÃƒÆ’Ã‚Â­tulos. Para criar tÃƒÆ’Ã‚Â­tulos, use letras maiÃƒÆ’Ã‚Âºsculas e asteriscos: `*RESUMO DE VENDAS*`.\n- Formate TODOS os valores monetÃƒÆ’Ã‚Â¡rios no formato Real Brasileiro (ex: *R$ 35.120,50*).\n- Use bullet points (`-` ou `ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢`) acompanhados de emojis (ÃƒÂ°Ã…Â¸Ã…Â¡Ã¢â€šÂ¬, ÃƒÂ°Ã…Â¸Ã¢â‚¬â„¢Ã‚Â°, ÃƒÂ°Ã…Â¸Ã‚ÂÃ¢â‚¬Â , ÃƒÂ°Ã…Â¸Ã‚ÂÃ‚Â¢, ÃƒÂ°Ã…Â¸Ã…Â½Ã‚Â¯) para separar os raciocÃƒÆ’Ã‚Â­nios.\n\n---\n\n# ÃƒÂ°Ã…Â¸Ã…Â½Ã‚Â¯ EXEMPLOS DE SAÃƒÆ’Ã‚ÂDA NO FORMATO DO WHATSAPP (Copie este estilo)\n\n### Exemplo 1: Pergunta sobre o MÃƒÆ’Ã‚Âªs de um Vendedor\n*ÃƒÂ°Ã…Â¸Ã¢â‚¬ËœÃ‚Â¤ Vendedor:* Ana Silva  \n*ÃƒÂ°Ã…Â¸Ã‚ÂÃ‚Â¢ Loja:* Sobral | *ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã¢â‚¬Â¦ MÃƒÆ’Ã‚Âªs:* Junho/2026  \n\n*ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã…Â  Resumo de Vendas*  \n- *Total Vendido:* R$ 42.500,00  \n- *Volume de OperaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Âµes:* 120 vendas  \n\n*ÃƒÂ°Ã…Â¸Ã…Â½Ã‚Â¯ Performance e Metas*  \n- *Status Atual:* Meta Top 2 ÃƒÂ°Ã…Â¸Ã…Â¡Ã¢â€šÂ¬  \n- *ComissÃƒÆ’Ã‚Â£o Fixa (Garantida):* R$ 425,00  \n- *ComissÃƒÆ’Ã‚Â£o DinÃƒÆ’Ã‚Â¢mica (Estimada):* R$ 637,50  \n\n_ÃƒÂ¢Ã…Â¡Ã‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â Insight de GestÃƒÆ’Ã‚Â£o:_ Faltam apenas *R$ 7.500,00* em vendas para estourar a meta *Master*! Vai pra cima!\n\n---\n\n### Exemplo 2: Pergunta Comparativa do Vendedor\n*ÃƒÂ°Ã…Â¸Ã¢â‚¬ËœÃ‚Â¤ Vendedor:* JoÃƒÆ’Ã‚Â£o Souza | *ÃƒÂ°Ã…Â¸Ã‚ÂÃ‚Â¢ Loja:* Itapipoca\n\n*ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã¢â‚¬Â¦ Maio/2026:*\n- *Total Vendido:* R$ 15.000,00 (15 vendas)\n- *NÃƒÆ’Ã‚Â­vel Atingido:* MÃƒÆ’Ã‚Â­nima\n- *ComissÃƒÆ’Ã‚Âµes Totais Estimadas:* R$ 300,00\n\n*ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã¢â‚¬Â¦ Junho/2026:*\n- *Total Vendido:* R$ 45.000,00 (48 vendas)\n- *NÃƒÆ’Ã‚Â­vel Atingido:* Top 2 ÃƒÂ°Ã…Â¸Ã…Â¡Ã¢â€šÂ¬\n- *ComissÃƒÆ’Ã‚Âµes Totais Estimadas:* R$ 1.125,00\n\n*ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‹â€  AnÃƒÆ’Ã‚Â¡lise de EvoluÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o:* \nO vendedor JoÃƒÆ’Ã‚Â£o Souza teve um *crescimento explosivo*! O faturamento saltou de R$ 15.000,00 para R$ 45.000,00 (triplicou o faturamento). Ele saiu da meta MÃƒÆ’Ã‚Â­nima e alcanÃƒÆ’Ã‚Â§ou com sucesso a meta Top 2 em Junho. Um excelente mÃƒÆ’Ã‚Âªs!\n\n---\n\n### Exemplo 3: Pergunta de Loja (\"Qual foi o faturamento da loja de Sobral esse mÃƒÆ’Ã‚Âªs?\")\n*ÃƒÂ°Ã…Â¸Ã‚ÂÃ‚Â¢ Loja:* Sobral\n*ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã¢â‚¬Â¦ MÃƒÆ’Ã‚Âªs de ReferÃƒÆ’Ã‚Âªncia:* Junho/2026\n\n*ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã…Â  Consolidado Geral:*\n- *Faturamento Total:* R$ 450.000,00 ÃƒÂ°Ã…Â¸Ã¢â‚¬â„¢Ã‚Â°\n- *TransaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Âµes:* 1.840 vendas fechadas\n- *ForÃƒÆ’Ã‚Â§a de Vendas:* 12 vendedores ativos no mÃƒÆ’Ã‚Âªs\n\n*ÃƒÂ°Ã…Â¸Ã¢â‚¬â„¢Ã‚Â¸ Despesas Estimadas com Time:*\n- *Custos em ComissÃƒÆ’Ã‚Â£o Fixa:* R$ 4.500,00\n- *Custos em ComissÃƒÆ’Ã‚Â£o DinÃƒÆ’Ã‚Â¢mica:* R$ 8.900,00\n\n_ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â Resumo:_ A loja performou de forma saudÃƒÆ’Ã‚Â¡vel, mantendo a forÃƒÆ’Ã‚Â§a de vendas puxando os resultados. \n\n---\n\n### Exemplo 4: Pergunta de Ranking (\"Quem foram os top 5 vendedores do mÃƒÆ’Ã‚Âªs?\")\n*ÃƒÂ°Ã…Â¸Ã‚ÂÃ¢â‚¬Â  Ranking de Vendas - Top 5 (MÃƒÆ’Ã‚Âªs: Junho/2026)*\n\nAqui estÃƒÆ’Ã‚Â£o os destaques do mÃƒÆ’Ã‚Âªs, ordenados pelo volume de vendas faturadas:\n\n*ÃƒÂ°Ã…Â¸Ã‚Â¥Ã¢â‚¬Â¡ 1Ãƒâ€šÃ‚Âº Lugar: Carlos Eduardo* (Sobral)\n- *Faturou:* R$ 125.000,00 (Bateu Meta: Master ÃƒÂ°Ã…Â¸Ã…Â¡Ã¢â€šÂ¬)\n\n*ÃƒÂ°Ã…Â¸Ã‚Â¥Ã‹â€  2Ãƒâ€šÃ‚Âº Lugar: Ana Beatriz* (Itapipoca)\n- *Faturou:* R$ 85.000,00 (Bateu Meta: Top 2 ÃƒÂ¢Ã‚Â­Ã‚Â)\n\n*ÃƒÂ°Ã…Â¸Ã‚Â¥Ã¢â‚¬Â° 3Ãƒâ€šÃ‚Âº Lugar: Ana Silva* (Sobral)\n- *Faturou:* R$ 42.500,00 (Bateu Meta: Top 1)\n\n_ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â Nota:_ O vendedor Carlos Eduardo dominou a lideranÃƒÆ’Ã‚Â§a disparado neste perÃƒÆ’Ã‚Â­odo.\n\n---\n\n### Exemplo 5: VisÃƒÆ’Ã‚Â£o CEO Macro (\"Qual foi o faturamento total da empresa toda nos ÃƒÆ’Ã‚Âºltimos 2 meses?\")\n*ÃƒÂ°Ã…Â¸Ã‚ÂÃ‚Â¢ Resultado Global da Maria Lima*\n\nAqui estÃƒÆ’Ã‚Â£o os dados consolidados somando a performance de todas as operaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Âµes:\n\n*ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã¢â‚¬Â¦ Maio/2026:*\n- *Faturamento Total Global:* R$ 650.000,00\n- *Vendedores Ativos:* 21 vendedores\n- *Custos de ComissÃƒÆ’Ã‚Â£o:* R$ 16.500,00\n\n*ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã¢â‚¬Â¦ Junho/2026:*\n- *Faturamento Total Global:* R$ 780.000,00 ÃƒÂ°Ã…Â¸Ã…Â¡Ã¢â€šÂ¬\n- *Vendedores Ativos:* 23 vendedores\n- *Custos de ComissÃƒÆ’Ã‚Â£o:* R$ 22.000,00\n\n*ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‹â€  VisÃƒÆ’Ã‚Â£o do NegÃƒÆ’Ã‚Â³cio:*\nA empresa toda faturou *R$ 1.430.000,00* neste bimestre. Houve um crescimento global de 20% no faturamento, um cenÃƒÆ’Ã‚Â¡rio de traÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o muito positivo para a diretoria!\n\n---\n\n### Exemplo 6: Pergunta DiÃƒÆ’Ã‚Â¡ria EspecÃƒÆ’Ã‚Â­fica (\"Quanto a Ana vendeu ontem?\")\n*ÃƒÂ°Ã…Â¸Ã¢â‚¬ËœÃ‚Â¤ Vendedor:* Ana Silva  \n*ÃƒÂ°Ã…Â¸Ã‚ÂÃ‚Â¢ Loja:* Sobral | *ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã¢â‚¬Â¦ Data:* 15/Junho/2026 (Ontem)\n\n*ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã…Â  Performance do Dia*  \n- *Total Vendido no Dia:* R$ 5.200,00  \n- *Quantidade de Vendas:* 8 operaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Âµes  \n- *Ticket MÃƒÆ’Ã‚Â©dio:* R$ 650,00  \n\n*ÃƒÂ°Ã…Â¸Ã…Â½Ã‚Â¯ AnÃƒÆ’Ã‚Â¡lise da Meta DiÃƒÆ’Ã‚Â¡ria*  \n- *NÃƒÆ’Ã‚Â­vel DiÃƒÆ’Ã‚Â¡rio AlcanÃƒÆ’Ã‚Â§ado:* Top 2 ÃƒÂ°Ã…Â¸Ã…Â¡Ã¢â€šÂ¬  \n- *ComissÃƒÆ’Ã‚Â£o Fixa (Dia):* R$ 52,00  \n\n_ÃƒÂ¢Ã…Â¡Ã‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â Insight do Dia:_ Excelente dia de vendas! VocÃƒÆ’Ã‚Âª bateu a sua meta diÃƒÆ’Ã‚Â¡ria Top 2 e faltaram apenas *R$ 1.800,00* para alcanÃƒÆ’Ã‚Â§ar a dificÃƒÆ’Ã‚Â­lima meta diÃƒÆ’Ã‚Â¡ria Master. Continue nesse ritmo!\n\n---\n\n### Exemplo 7: Meta Semanal de Todos os Vendedores (\"Como estamos na meta semanal de todos os vendedores de Sobral?\")\n*ÃƒÂ°Ã…Â¸Ã‚ÂÃ‚Â¢ Loja:* Sobral  \n*ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã¢â‚¬Â¦ PerÃƒÆ’Ã‚Â­odo Semanal:* 28/09 a 04/10/2026  \n\n*ÃƒÂ°Ã…Â¸Ã…Â½Ã‚Â¯ ACOMPANHAMENTO DA META SEMANAL DO TIME*\n\nAqui estÃƒÆ’Ã‚Â¡ a performance de cada vendedor de Sobral na meta semanal (referÃƒÆ’Ã‚Âªncia Meta Top 1):\n\n*ÃƒÂ°Ã…Â¸Ã‚Â¥Ã¢â‚¬Â¡ 1Ãƒâ€šÃ‚Âº Carlos Eduardo*\n- *Vendido na Semana:* R$ 22.400,00 (38 vendas)\n- *Meta Top 1 Semanal:* R$ 18.333,33\n- *Atingimento:* 122,2% ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â *Bateu Meta Top 2!* ÃƒÂ°Ã…Â¸Ã…Â¡Ã¢â€šÂ¬\n- *Ticket MÃƒÆ’Ã‚Â©dio:* R$ 589,47\n\n*ÃƒÂ°Ã…Â¸Ã‚Â¥Ã‹â€  2Ãƒâ€šÃ‚Âº Ana Beatriz*\n- *Vendido na Semana:* R$ 17.500,00 (26 vendas)\n- *Meta Top 1 Semanal:* R$ 18.333,33\n- *Atingimento:* 95,5% ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â *Meta MÃƒÆ’Ã‚Â­nima Garantida* ÃƒÂ¢Ã‚Â­Ã‚Â\n- *Faltam para Top 1:* R$ 833,33\n\n*ÃƒÂ°Ã…Â¸Ã‚Â¥Ã¢â‚¬Â° 3Ãƒâ€šÃ‚Âº Ana Silva*\n- *Vendido na Semana:* R$ 14.500,00 (22 vendas)\n- *Meta Top 1 Semanal:* R$ 18.333,33\n- *Atingimento:* 79,1% ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â *Abaixo da MÃƒÆ’Ã‚Â­nima* ÃƒÂ°Ã…Â¸Ã‚ÂÃ†â€™\n- *Faltam para Top 1:* R$ 3.833,33\n\n---\n*ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã…Â  Consolidado da Semana (Loja Sobral):*\n- *Total Vendido na Semana:* R$ 54.400,00 ÃƒÂ°Ã…Â¸Ã¢â‚¬â„¢Ã‚Â°\n- *Meta Semanal da Loja (Top 1):* R$ 55.000,00 (98,9% atingido)\n- *Falta para bater Top 1:* apenas *R$ 600,00*!\n\n_ÃƒÂ¢Ã…Â¡Ã‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â Insight de GestÃƒÆ’Ã‚Â£o:_ A loja estÃƒÆ’Ã‚Â¡ a um passo da meta semanal! Carlos Eduardo jÃƒÆ’Ã‚Â¡ superou a meta, e com mais 1 ou 2 fechamentos da equipe hoje, Sobral estoura o Top 1 com sucesso! ÃƒÂ°Ã…Â¸Ã…Â¡Ã¢â€šÂ¬\n\n---\n\n### Exemplo 8: Meta Semanal de Vendedor EspecÃƒÆ’Ã‚Â­fico (\"Como a Ana Silva estÃƒÆ’Ã‚Â¡ na meta da semana?\")\n*ÃƒÂ°Ã…Â¸Ã¢â‚¬ËœÃ‚Â¤ Vendedora:* Ana Silva  \n*ÃƒÂ°Ã…Â¸Ã‚ÂÃ‚Â¢ Loja:* Sobral | *ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã¢â‚¬Â¦ Semana:* 28/09 a 04/10/2026  \n\n*ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã…Â  Performance na Semana:*\n- *Total Vendido:* R$ 14.500,00 (22 operaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Âµes)\n- *Ticket MÃƒÆ’Ã‚Â©dio:* R$ 659,09\n\n*ÃƒÂ°Ã…Â¸Ã…Â½Ã‚Â¯ Metas Semanais:*\n- *Meta MÃƒÆ’Ã‚Â­nima:* R$ 15.000,00\n- *Meta Top 1:* R$ 18.333,33\n- *Meta Top 2:* R$ 21.666,67\n- *Meta Master:* R$ 25.000,00\n- *Atingimento da Meta Top 1:* 79,1%\n- *Status:* Abaixo da MÃƒÆ’Ã‚Â­nima ÃƒÂ°Ã…Â¸Ã‚ÂÃ†â€™\n\n_ÃƒÂ¢Ã…Â¡Ã‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â Insight:_ Faltam *R$ 500,00* para bater a MÃƒÆ’Ã‚Â­nima e *R$ 3.833,33* para a Meta Top 1. Com o ticket mÃƒÆ’Ã‚Â©dio atual, 5 a 6 vendas novas sÃƒÆ’Ã‚Â£o suficientes para virar o jogo antes do fim da semana! Pra cima! ÃƒÂ°Ã…Â¸Ã¢â‚¬â„¢Ã‚Âª\n"
-                                                     }
-                                     },
-                      "type":  "@n8n/n8n-nodes-langchain.agent",
-                      "typeVersion":  3.1,
-                      "position":  [
-                                       2160,
-                                       320
-                                   ],
-                      "id":  "bd29bc01-72c5-44ad-bc59-89fa04cc1af1",
-                      "name":  "AI Agent"
-                  },
-                  {
-                      "parameters":  {
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "type":  "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
-                      "typeVersion":  1,
-                      "position":  [
-                                       1968,
-                                       480
-                                   ],
-                      "id":  "6234548a-2386-421d-8865-95cf573005cd",
-                      "name":  "OpenRouter Chat Model",
-                      "credentials":  {
-                                          "openRouterApi":  {
-                                                                "id":  "5jH8Yagb90DwRU30",
-                                                                "name":  "OpenRouter"
-                                                            }
-                                      }
-                  },
-                  {
-                      "parameters":  {
-                                         "descriptionType":  "manual",
-                                         "toolDescription":  "\"Ranking DIRIO dos melhores vendedores da empresa. Recebe 'data_venda' (YYYY-MM-DD) e \n'criterio' (pode ser 'faturamento', 'volume' ou 'ticket_medio'). Retorna os melhores vendedores no dia ordenados pelo \ncriterio escolhido.\"",
-                                         "operation":  "executeQuery",
-                                         "query":  "SELECT\n  nome_vendedor,\n  loja,\n  valor_total_vendido,\n  quantidade_vendas,\n  ticket_medio,\n  \nnivel_alcancado_diario AS nivel_alcancado\nFROM marialima_vw_ai_performance_diaria\nWHERE data_venda = $1::date\nORDER \nBY\n  CASE WHEN $2 = 'ticket_medio' THEN ticket_medio END DESC,\n  CASE WHEN $2 = 'volume' THEN quantidade_vendas END \nDESC,\n  CASE WHEN $2 = 'faturamento' THEN valor_total_vendido END DESC,\n  valor_total_vendido DESC\nLIMIT 15;",
-                                         "options":  {
-                                                         "queryReplacement":  "={{ $fromAI('data_venda') }}\n{{ $fromAI('criterio') }}",
-                                                         "treatQueryParametersInSingleQuotesAsText":  false
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.postgresTool",
-                      "typeVersion":  2.6,
-                      "position":  [
-                                       2864,
-                                       624
-                                   ],
-                      "id":  "9925327f-f31e-457c-a9d5-2f38c6646b9b",
-                      "name":  "tool_ranking_diario_vendedores",
-                      "credentials":  {
-                                          "postgres":  {
-                                                           "id":  "GE99tmxRz3vNhLqD",
-                                                           "name":  "Postgres - ProjectsGerais Score"
-                                                       }
-                                      }
-                  },
-                  {
-                      "parameters":  {
-                                         "descriptionType":  "manual",
-                                         "toolDescription":  "\"Retorna o acompanhamento de metas SEMANAIS e o desempenho de vendas dos vendedores. Use \npara responder sobre metas semanais de todos os vendedores de uma loja (ex: 'como estamos na meta semanal de \nSobral?'), de todas as lojas somadas ou de um vendedor individual. Retorna total vendido na semana, meta minima, top \n1, top 2, master da semana, % atingido, nivel alcancado e quanto falta para a meta. O argumento 'nome_loja' pode ser \n'Sobral', 'Itapipoca' ou vazio para todas. O argumento 'data_inicio' deve ser YYYY-MM-DD (segunda-feira da semana). O \nargumento 'data_fim' deve ser YYYY-MM-DD (domingo ou sÃƒâ€¡Ã‚Â­bado da semana). O argumento 'vendedor' Ãƒâ€¡Ã‚Â¸ opcional (nome do \nvendedor ou vazio para todos).\"",
-                                         "operation":  "executeQuery",
-                                         "query":  "WITH parames AS (\n  SELECT \n    COALESCE(NULLIF($2, '')::date, date_trunc('week', \nCURRENT_DATE)::date) AS dt_inicio,\n    COALESCE(NULLIF($3, '')::date, (COALESCE(NULLIF($2, '')::date, \ndate_trunc('week', CURRENT_DATE)::date) + interval '6 days')::date) AS dt_fim\n)\nSELECT \n    d.nome_vendedor,\n    \nd.loja,\n    parames.dt_inicio AS periodo_inicio,\n    parames.dt_fim AS periodo_fim,\n    COUNT(DISTINCT d.data_venda) \nAS dias_com_movimento,\n    SUM(d.quantidade_vendas) AS quantidade_vendas,\n    SUM(d.valor_total_vendido) AS \nvalor_total_vendido,\n    ROUND(SUM(d.valor_total_vendido) / NULLIF(SUM(d.quantidade_vendas), 0), 2) AS \nticket_medio,\n    SUM(d.meta_minima_diaria) AS meta_minima_semanal,\n    SUM(d.meta_top1_diaria) AS \nmeta_top1_semanal,\n    SUM(d.meta_top2_diaria) AS meta_top2_semanal,\n    SUM(d.meta_master_diaria) AS \nmeta_master_semanal,\n    ROUND((SUM(d.valor_total_vendido) / NULLIF(SUM(d.meta_top1_diaria), 0)) * 100, 1) AS \npercentual_atingimento_top1,\n    CASE \n      WHEN SUM(d.meta_master_diaria) > 0 AND SUM(d.valor_total_vendido) >= \nSUM(d.meta_master_diaria) THEN 'Master'\n      WHEN SUM(d.meta_top2_diaria) > 0 AND SUM(d.valor_total_vendido) >= \nSUM(d.meta_top2_diaria) THEN 'Top 2'\n      WHEN SUM(d.meta_top1_diaria) > 0 AND SUM(d.valor_total_vendido) >= \nSUM(d.meta_top1_diaria) THEN 'Top 1'\n      WHEN SUM(d.meta_minima_diaria) > 0 AND SUM(d.valor_total_vendido) >= \nSUM(d.meta_minima_diaria) THEN 'Minima'\n      ELSE 'Abaixo da Minima'\n    END AS nivel_alcancado_semanal,\n    CASE \n\n      WHEN SUM(d.valor_total_vendido) >= SUM(d.meta_top1_diaria) THEN 0\n      ELSE GREATEST(0, \nROUND(SUM(d.meta_top1_diaria) - SUM(d.valor_total_vendido), 2))\n    END AS gap_meta_top1,\n    \nSUM(d.comissao_fixa_diaria) AS comissao_fixa_semanal\nFROM marialima_vw_ai_performance_diaria d, parames\nWHERE \n(COALESCE($1, '') = '' OR $1 ILIKE '%todas%' OR $1 ILIKE '%global%' OR $1 ILIKE '%empresa%' OR d.loja ILIKE '%' || $1 \n|| '%')\n  AND (COALESCE($4, '') = '' OR d.nome_vendedor ILIKE '%' || $4 || '%')\n  AND d.data_venda >= \nparames.dt_inicio\n  AND d.data_venda <= parames.dt_fim\nGROUP BY d.nome_vendedor, d.loja, parames.dt_inicio, \nparames.dt_fim\nORDER BY SUM(d.valor_total_vendido) DESC;",
-                                         "options":  {
-                                                         "queryReplacement":  "={{ $fromAI('nome_loja') }}\n{{ $fromAI('data_inicio') }}\n{{ $fromAI('data_fim') }}\n{{ $fromAI('vendedor') }}"
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.postgresTool",
-                      "typeVersion":  2.6,
-                      "position":  [
-                                       2448,
-                                       736
-                                   ],
-                      "id":  "c7e2b1f8-9a3d-4c5e-8f12-7b6a9d0e1234",
-                      "name":  "tool_metas_semanais_vendedores",
-                      "credentials":  {
-                                          "postgres":  {
-                                                           "id":  "GE99tmxRz3vNhLqD",
-                                                           "name":  "Postgres - ProjectsGerais Score"
-                                                       }
-                                      }
-                  },
-                  {
-                      "parameters":  {
-                                         "descriptionType":  "manual",
-                                         "toolDescription":  "\"Retorna o faturamento e as metas consolidadas de uma LOJA ou da EMPRESA INTEIRA em uma \nSEMANA (ex: 'como a loja de Sobral estÃƒâ€¡Ã‚Â­ na meta semanal?', 'qual o resultado da semana da empresa?'). Retorna total \nvendido na semana, metas da loja/empresa (Minima, Top 1, Top 2, Master), % de atingimento da meta Top 1, nvel \nalcanado e quantidade de vendedores ativos. Argumentos: 'nome_loja' ('Sobral', 'Itapipoca' ou vazio/empresa para \nconsolidado geral), 'data_inicio' (YYYY-MM-DD da segunda-feira), 'data_fim' (YYYY-MM-DD do domingo/sÃƒâ€¡Ã‚Â­bado).\"",
-                                         "operation":  "executeQuery",
-                                         "query":  "WITH parames AS (\n  SELECT \n    COALESCE(NULLIF($2, '')::date, date_trunc('week', \nCURRENT_DATE)::date) AS dt_inicio,\n    COALESCE(NULLIF($3, '')::date, (COALESCE(NULLIF($2, '')::date, \ndate_trunc('week', CURRENT_DATE)::date) + interval '6 days')::date) AS dt_fim\n)\nSELECT \n    d.loja,\n    \nparames.dt_inicio AS periodo_inicio,\n    parames.dt_fim AS periodo_fim,\n    COUNT(DISTINCT d.nome_vendedor) AS \nqtd_vendedores_ativos,\n    SUM(d.valor_total_vendido) AS total_vendido,\n    SUM(d.quantidade_vendas) AS \nvolume_vendas,\n    ROUND(SUM(d.valor_total_vendido) / NULLIF(SUM(d.quantidade_vendas), 0), 2) AS ticket_medio,\n    \nSUM(d.meta_minima_diaria) AS meta_minima_semanal_loja,\n    SUM(d.meta_top1_diaria) AS meta_top1_semanal_loja,\n    \nSUM(d.meta_top2_diaria) AS meta_top2_semanal_loja,\n    SUM(d.meta_master_diaria) AS meta_master_semanal_loja,\n    \nROUND((SUM(d.valor_total_vendido) / NULLIF(SUM(d.meta_top1_diaria), 0)) * 100, 1) AS percentual_atingimento_top1,\n    \nCASE \n      WHEN SUM(d.meta_master_diaria) > 0 AND SUM(d.valor_total_vendido) >= SUM(d.meta_master_diaria) THEN \n'Master'\n      WHEN SUM(d.meta_top2_diaria) > 0 AND SUM(d.valor_total_vendido) >= SUM(d.meta_top2_diaria) THEN 'Top \n2'\n      WHEN SUM(d.meta_top1_diaria) > 0 AND SUM(d.valor_total_vendido) >= SUM(d.meta_top1_diaria) THEN 'Top 1'\n    \n  WHEN SUM(d.meta_minima_diaria) > 0 AND SUM(d.valor_total_vendido) >= SUM(d.meta_minima_diaria) THEN 'Minima'\n      \nELSE 'Abaixo da Minima'\n    END AS nivel_alcancado_loja,\n    CASE \n      WHEN SUM(d.valor_total_vendido) >= \nSUM(d.meta_top1_diaria) THEN 0\n      ELSE GREATEST(0, ROUND(SUM(d.meta_top1_diaria) - SUM(d.valor_total_vendido), \n2))\n    END AS gap_meta_top1,\n    SUM(d.comissao_fixa_diaria) AS custo_comissaoes_fixas\nFROM \nmarialima_vw_ai_performance_diaria d, parames\nWHERE (COALESCE($1, '') = '' OR $1 ILIKE '%todas%' OR $1 ILIKE \n'%global%' OR $1 ILIKE '%empresa%' OR d.loja ILIKE '%' || $1 || '%')\n  AND d.data_venda >= parames.dt_inicio\n  AND \nd.data_venda <= parames.dt_fim\nGROUP BY d.loja, parames.dt_inicio, parames.dt_fim\nORDER BY SUM(d.valor_total_vendido) \nDESC;",
-                                         "options":  {
-                                                         "queryReplacement":  "={{ $fromAI('nome_loja') }}\n{{ $fromAI('data_inicio') }}\n{{ $fromAI('data_fim') }}"
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.postgresTool",
-                      "typeVersion":  2.6,
-                      "position":  [
-                                       2448,
-                                       880
-                                   ],
-                      "id":  "e4d3a2b1-8c5e-4f7a-9b12-6a8c0d1e5678",
-                      "name":  "tool_resumo_semanal_loja",
-                      "credentials":  {
-                                          "postgres":  {
-                                                           "id":  "GE99tmxRz3vNhLqD",
-                                                           "name":  "Postgres - ProjectsGerais Score"
-                                                       }
-                                      }
-                  },
-                  {
-                      "parameters":  {
-                                         "operation":  "getAll",
-                                         "tableId":  "marialima_profiles",
-                                         "returnAll":  true,
-                                         "filters":  {
-                                                         "conditions":  [
-                                                                            {
-                                                                                "keyName":  "agente_ia",
-                                                                                "condition":  "is",
-                                                                                "keyValue":  "true"
-                                                                            }
-                                                                        ]
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.supabase",
-                      "typeVersion":  1,
-                      "position":  [
-                                       -3056,
-                                       416
-                                   ],
-                      "id":  "306bcd98-4800-489a-bc6e-8ed1bf582820",
-                      "name":  "usuarios-acesso",
-                      "credentials":  {
-                                          "supabaseApi":  {
-                                                              "id":  "fFuNdE7pSHIx32Sh",
-                                                              "name":  "Score"
-                                                          }
-                                      }
-                  },
-                  {
-                      "parameters":  {
-                                         "conditions":  {
-                                                            "options":  {
-                                                                            "caseSensitive":  true,
-                                                                            "leftValue":  "",
-                                                                            "typeValidation":  "strict",
-                                                                            "version":  3
-                                                                        },
-                                                            "conditions":  [
-                                                                               {
-                                                                                   "id":  "8b44a5f8-c15f-490e-9f1d-a8f0d764fbac",
-                                                                                   "leftValue":  "={{ $json.body.data.key.fromMe }}",
-                                                                                   "rightValue":  false,
-                                                                                   "operator":  {
-                                                                                                    "type":  "boolean",
-                                                                                                    "operation":  "equals"
-                                                                                                }
-                                                                               }
-                                                                           ],
-                                                            "combinator":  "and"
-                                                        },
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.if",
-                      "typeVersion":  2.3,
-                      "position":  [
-                                       -3280,
-                                       432
-                                   ],
-                      "id":  "ca23205a-c5b0-40c2-85cb-271b84a62e36",
-                      "name":  "fromMe"
-                  },
-                  {
-                      "parameters":  {
-                                         "mode":  "runOnceForAllItems",
-                                         "jsCode":  "const items = $input.all();\n\nlet senderRaw = '';\ntry {\n  const webhookData = $('Webhook').first().json;\n  senderRaw = String(webhookData.body?.data?.key?.remoteJid || webhookData.body?.sender || webhookData.body?.data?.remoteJid || '').split('@')[0];\n} catch (e) {\n  senderRaw = '';\n}\n\n// Extrai apenas os ultimos 8 digitos do remetente\nconst senderDigits = senderRaw.replace(/\\D/g, '').slice(-8);\n\n// Normaliza os numeros autorizados vindos do Supabase\nconst numbers = items\n  .map(item => String(item.json?.whatsapp || item.json?.telefone || '').replace(/\\D/g, '').slice(-8))\n  .filter(digits => digits.length >= 8);\n\nconst isAuthorized = senderDigits.length >= 8 && numbers.includes(senderDigits);\n\nreturn [{\n  json: {\n    isAuthorized,\n    senderDigits,\n    totalAutorizados: numbers.length\n  }\n}];"
-                                     },
-                      "type":  "n8n-nodes-base.code",
-                      "typeVersion":  2,
-                      "position":  [
-                                       -2848,
-                                       416
-                                   ],
-                      "id":  "54e43bf0-9041-4841-8041-17ba3524787d",
-                      "name":  "normalizar-numeros"
-                  },
-                  {
-                      "parameters":  {
-                                         "conditions":  {
-                                                            "options":  {
-                                                                            "caseSensitive":  true,
-                                                                            "leftValue":  "",
-                                                                            "typeValidation":  "strict",
-                                                                            "version":  3
-                                                                        },
-                                                            "conditions":  [
-                                                                               {
-                                                                                   "id":  "05a4d9a2-df37-468d-81a8-c7609f1ab0ed",
-                                                                                   "leftValue":  "={{ $json.isAuthorized }}",
-                                                                                   "rightValue":  "",
-                                                                                   "operator":  {
-                                                                                                    "type":  "boolean",
-                                                                                                    "operation":  "true",
-                                                                                                    "singleValue":  true
-                                                                                                }
-                                                                               }
-                                                                           ],
-                                                            "combinator":  "or"
-                                                        },
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.if",
-                      "typeVersion":  2.3,
-                      "position":  [
-                                       -2656,
-                                       416
-                                   ],
-                      "id":  "dc0ba8b0-b5cf-4b1b-ba68-f791923cd4ff",
-                      "name":  "autorizado"
+                    "id": "1e1df4de-37a6-41e2-8deb-18076f5fb9ea",
+                    "leftValue": "={{ $json.tipo }}",
+                    "rightValue": "conversation",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
                   }
-              ],
-    "connections":  {
-                        "Redis Chat Memory":  {
-                                                  "ai_memory":  [
-                                                                    [
-                                                                        {
-                                                                            "node":  "insereMessageUser",
-                                                                            "type":  "ai_memory",
-                                                                            "index":  0
-                                                                        },
-                                                                        {
-                                                                            "node":  "Chat Memory Manager",
-                                                                            "type":  "ai_memory",
-                                                                            "index":  0
-                                                                        },
-                                                                        {
-                                                                            "node":  "AI Agent",
-                                                                            "type":  "ai_memory",
-                                                                            "index":  0
-                                                                        }
-                                                                    ]
-                                                                ]
-                                              },
-                        "If":  {
-                                   "main":  [
-                                                [
-                                                    {
-                                                        "node":  "chaveBlock",
-                                                        "type":  "main",
-                                                        "index":  0
-                                                    }
-                                                ],
-                                                [
-                                                    {
-                                                        "node":  "Redis",
-                                                        "type":  "main",
-                                                        "index":  0
-                                                    }
-                                                ]
-                                            ]
-                               },
-                        "chaveBlock":  {
-                                           "main":  [
-                                                        [
-                                                            {
-                                                                "node":  "Chat Memory Manager",
-                                                                "type":  "main",
-                                                                "index":  0
-                                                            }
-                                                        ]
-                                                    ]
-                                       },
-                        "Redis":  {
-                                      "main":  [
-                                                   [
-                                                       {
-                                                           "node":  "If1",
-                                                           "type":  "main",
-                                                           "index":  0
-                                                       }
-                                                   ]
-                                               ]
-                                  },
-                        "If1":  {
-                                    "main":  [
-                                                 [
-                                                     {
-                                                         "node":  "insereMessageUser",
-                                                         "type":  "main",
-                                                         "index":  0
-                                                     }
-                                                 ],
-                                                 [
-                                                     {
-                                                         "node":  "buffer",
-                                                         "type":  "main",
-                                                         "index":  0
-                                                     }
-                                                 ]
-                                             ]
-                                },
-                        "buffer":  {
-                                       "main":  [
-                                                    [
-                                                        {
-                                                            "node":  "Wait",
-                                                            "type":  "main",
-                                                            "index":  0
-                                                        }
-                                                    ]
-                                                ]
-                                   },
-                        "Wait":  {
-                                     "main":  [
-                                                  [
-                                                      {
-                                                          "node":  "buffer2",
-                                                          "type":  "main",
-                                                          "index":  0
-                                                      }
-                                                  ]
-                                              ]
-                                 },
-                        "buffer2":  {
-                                        "main":  [
-                                                     [
-                                                         {
-                                                             "node":  "If2",
-                                                             "type":  "main",
-                                                             "index":  0
-                                                         }
-                                                     ]
-                                                 ]
-                                    },
-                        "If2":  {
-                                    "main":  [
-                                                 [
-                                                     {
-                                                         "node":  "Redis1",
-                                                         "type":  "main",
-                                                         "index":  0
-                                                     }
-                                                 ]
-                                             ]
-                                },
-                        "Redis1":  {
-                                       "main":  [
-                                                    [
-                                                        {
-                                                            "node":  "mensagemFinal",
-                                                            "type":  "main",
-                                                            "index":  0
-                                                        }
-                                                    ]
-                                                ]
-                                   },
-                        "mensagemFinal":  {
-                                              "main":  [
-                                                           [
-                                                               {
-                                                                   "node":  "AI Agent",
-                                                                   "type":  "main",
-                                                                   "index":  0
-                                                               }
-                                                           ]
-                                                       ]
-                                          },
-                        "message":  {
-                                        "main":  [
-                                                     [
-                                                         {
-                                                             "node":  "If",
-                                                             "type":  "main",
-                                                             "index":  0
-                                                         }
-                                                     ]
-                                                 ]
-                                    },
-                        "dados":  {
-                                      "main":  [
-                                                   [
-                                                       {
-                                                           "node":  "Switch",
-                                                           "type":  "main",
-                                                           "index":  0
-                                                       }
-                                                   ]
-                                               ]
-                                  },
-                        "Webhook":  {
-                                        "main":  [
-                                                     [
-                                                         {
-                                                             "node":  "fromMe",
-                                                             "type":  "main",
-                                                             "index":  0
-                                                         }
-                                                     ]
-                                                 ]
-                                    },
-                        "Convert to File":  {
-                                                "main":  [
-                                                             [
-                                                                 {
-                                                                     "node":  "HTTP Request",
-                                                                     "type":  "main",
-                                                                     "index":  0
-                                                                 }
-                                                             ]
-                                                         ]
-                                            },
-                        "Switch":  {
-                                       "main":  [
-                                                    [
-                                                        {
-                                                            "node":  "textMessage",
-                                                            "type":  "main",
-                                                            "index":  0
-                                                        }
-                                                    ],
-                                                    [
-                                                        {
-                                                            "node":  "Obter Midia em Base64",
-                                                            "type":  "main",
-                                                            "index":  0
-                                                        }
-                                                    ]
-                                                ]
-                                   },
-                        "textMessage":  {
-                                            "main":  [
-                                                         [
-                                                             {
-                                                                 "node":  "message",
-                                                                 "type":  "main",
-                                                                 "index":  0
-                                                             }
-                                                         ]
-                                                     ]
-                                        },
-                        "HTTP Request":  {
-                                             "main":  [
-                                                          [
-                                                              {
-                                                                  "node":  "transcricao",
-                                                                  "type":  "main",
-                                                                  "index":  0
-                                                              }
-                                                          ]
-                                                      ]
-                                         },
-                        "transcricao":  {
-                                            "main":  [
-                                                         [
-                                                             {
-                                                                 "node":  "message",
-                                                                 "type":  "main",
-                                                                 "index":  0
-                                                             }
-                                                         ]
-                                                     ]
-                                        },
-                        "Obter Midia em Base64":  {
-                                                      "main":  [
-                                                                   [
-                                                                       {
-                                                                           "node":  "Convert to File",
-                                                                           "type":  "main",
-                                                                           "index":  0
-                                                                       }
-                                                                   ]
-                                                               ]
-                                                  },
-                        "tool_performa_diaria_vendedor":  {
-                                                              "ai_tool":  [
-                                                                              [
-                                                                                  {
-                                                                                      "node":  "AI Agent",
-                                                                                      "type":  "ai_tool",
-                                                                                      "index":  0
-                                                                                  }
-                                                                              ]
-                                                                          ]
-                                                          },
-                        "tool_performa_mensal_vendedor":  {
-                                                              "ai_tool":  [
-                                                                              [
-                                                                                  {
-                                                                                      "node":  "AI Agent",
-                                                                                      "type":  "ai_tool",
-                                                                                      "index":  0
-                                                                                  }
-                                                                              ]
-                                                                          ]
-                                                          },
-                        "tool_resumo_diario_loja":  {
-                                                        "ai_tool":  [
-                                                                        [
-                                                                            {
-                                                                                "node":  "AI Agent",
-                                                                                "type":  "ai_tool",
-                                                                                "index":  0
-                                                                            }
-                                                                        ]
-                                                                    ]
-                                                    },
-                        "tool_resumo_loja":  {
-                                                 "ai_tool":  [
-                                                                 [
-                                                                     {
-                                                                         "node":  "AI Agent",
-                                                                         "type":  "ai_tool",
-                                                                         "index":  0
-                                                                     }
-                                                                 ]
-                                                             ]
-                                             },
-                        "tool_ranking_vendedores":  {
-                                                        "ai_tool":  [
-                                                                        [
-                                                                            {
-                                                                                "node":  "AI Agent",
-                                                                                "type":  "ai_tool",
-                                                                                "index":  0
-                                                                            }
-                                                                        ]
-                                                                    ]
-                                                    },
-                        "tool_resumo_global_diario_empresa":  {
-                                                                  "ai_tool":  [
-                                                                                  [
-                                                                                      {
-                                                                                          "node":  "AI Agent",
-                                                                                          "type":  "ai_tool",
-                                                                                          "index":  0
-                                                                                      }
-                                                                                  ]
-                                                                              ]
-                                                              },
-                        "tool_resumo_global_empresa":  {
-                                                           "ai_tool":  [
-                                                                           [
-                                                                               {
-                                                                                   "node":  "AI Agent",
-                                                                                   "type":  "ai_tool",
-                                                                                   "index":  0
-                                                                               }
-                                                                           ]
-                                                                       ]
-                                                       },
-                        "AI Agent":  {
-                                         "main":  [
-                                                      [
-                                                          {
-                                                              "node":  "Enviar texto",
-                                                              "type":  "main",
-                                                              "index":  0
-                                                          }
-                                                      ]
-                                                  ]
-                                     },
-                        "OpenRouter Chat Model":  {
-                                                      "ai_languageModel":  [
-                                                                               [
-                                                                                   {
-                                                                                       "node":  "AI Agent",
-                                                                                       "type":  "ai_languageModel",
-                                                                                       "index":  0
-                                                                                   }
-                                                                               ]
-                                                                           ]
-                                                  },
-                        "tool_ranking_diario_vendedores":  {
-                                                               "ai_tool":  [
-                                                                               [
-                                                                                   {
-                                                                                       "node":  "AI Agent",
-                                                                                       "type":  "ai_tool",
-                                                                                       "index":  0
-                                                                                   }
-                                                                               ]
-                                                                           ]
-                                                           },
-                        "tool_metas_semanais_vendedores":  {
-                                                               "ai_tool":  [
-                                                                               [
-                                                                                   {
-                                                                                       "node":  "AI Agent",
-                                                                                       "type":  "ai_tool",
-                                                                                       "index":  0
-                                                                                   }
-                                                                               ]
-                                                                           ]
-                                                           },
-                        "tool_resumo_semanal_loja":  {
-                                                         "ai_tool":  [
-                                                                         [
-                                                                             {
-                                                                                 "node":  "AI Agent",
-                                                                                 "type":  "ai_tool",
-                                                                                 "index":  0
-                                                                             }
-                                                                         ]
-                                                                     ]
-                                                     },
-                        "usuarios-acesso":  {
-                                                "main":  [
-                                                             [
-                                                                 {
-                                                                     "node":  "normalizar-numeros",
-                                                                     "type":  "main",
-                                                                     "index":  0
-                                                                 }
-                                                             ]
-                                                         ]
-                                            },
-                        "fromMe":  {
-                                       "main":  [
-                                                    [
-                                                        {
-                                                            "node":  "usuarios-acesso",
-                                                            "type":  "main",
-                                                            "index":  0
-                                                        }
-                                                    ]
-                                                ]
-                                   },
-                        "normalizar-numeros":  {
-                                                   "main":  [
-                                                                [
-                                                                    {
-                                                                        "node":  "autorizado",
-                                                                        "type":  "main",
-                                                                        "index":  0
-                                                                    }
-                                                                ]
-                                                            ]
-                                               },
-                        "autorizado":  {
-                                           "main":  [
-                                                        [
-                                                            {
-                                                                "node":  "dados",
-                                                                "type":  "main",
-                                                                "index":  0
-                                                            }
-                                                        ]
-                                                    ]
-                                       }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.tipo }}",
+                    "rightValue": "audioMessage",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
                     },
-    "pinData":  {
-
+                    "id": "4bef679d-b793-4f55-8de4-1ca43e0ba042"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -2224,
+        352
+      ],
+      "id": "f27a7715-b165-42b0-8971-3b2d11eaace0",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a61959f4-ba0c-467e-8352-71bd69dbceb4",
+              "name": "message",
+              "value": "={{ $json.chatInput }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1568,
+        336
+      ],
+      "id": "51f7868f-8fb4-4b73-8d4b-729e9eb833c8",
+      "name": "textMessage"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/audio/transcriptions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "groqApi",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "whisper-large-v3-turbo"
+            },
+            {
+              "name": "temperature",
+              "value": "0"
+            },
+            {
+              "name": "response_format",
+              "value": "verbose_json"
+            },
+            {
+              "name": "language",
+              "value": "pt"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1456,
+        560
+      ],
+      "id": "faaf29cd-9068-4e20-a403-ea78586d55be",
+      "name": "HTTP Request",
+      "credentials": {
+        "groqApi": {
+          "id": "JyGpIRxuuZEUp9XO",
+          "name": "GroqLucas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3fe40034-5bed-4628-8d48-5928e5b9eebe",
+              "name": "message",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1248,
+        560
+      ],
+      "id": "d1f6ad9c-5e4b-48fc-adf7-61234e0d5694",
+      "name": "transcricao"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://SEU_DOMINIO_EVOLUTION/chat/getBase64FromMediaMessage/' + dados.item.json.instancia }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "SUA_API_KEY_EVOLUTION"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "message",
+              "value": "={{ { key: { id: dados.item.json.id } } }}"
+            },
+            {
+              "name": "convertToMp4",
+              "value": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1904,
+        560
+      ],
+      "id": "80b90f52-70b0-49b3-b12a-87cfaee0e0e9",
+      "name": "Obter Midia em Base64"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Busca o historico diario de um vendedor (vendas de ontem, vendas de um dia exato). Retorna ticket médio, metas diárias (se bateu a meta daquele dia) e quanto faltou no dia. O argumento 'busca' pode ser o nome. O argumento 'data_venda' deve ser YYYY-MM-DD.",
+        "operation": "executeQuery",
+        "query": "SELECT \n  nome_vendedor,\n  loja,\n  data_venda,\n  quantidade_vendas,\n  valor_total_vendido,\n  \nticket_medio,\n  meta_minima_diaria,\n  meta_top1_diaria,\n  meta_top2_diaria,\n  meta_master_diaria,\n  \nnivel_alcancado_diario,\n  gap_proxima_meta_diaria,\n  comissao_fixa_diaria\nFROM marialima_vw_ai_performance_diaria \n\nWHERE nome_vendedor ILIKE '%' || $1 || '%'\nAND data_venda = $2::date;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('busca') }}\n{{ $fromAI('data_venda') }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        2176,
+        688
+      ],
+      "id": "b8991855-ffc3-4a03-9411-4d829ee81dea",
+      "name": "tool_performa_diaria_vendedor",
+      "credentials": {
+        "postgres": {
+          "id": "GE99tmxRz3vNhLqD",
+          "name": "Postgres - ProjectsGerais Score"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "\"Busca o historico detalhado, alcance de metas, faturamento e comissao estimada de um \nvendedor especifico em um mes. O argumento 'busca' pode ser o nome do vendedor. O argumento 'mes_ano' deve ser no \nformato YYYY-MM.\"",
+        "operation": "executeQuery",
+        "query": "SELECT \n  nome_vendedor,\n  loja,\n  year_month,\n  quantidade_vendas,\n  valor_total_vendido,\n  \nmeta_minima_individual,\n  meta_top1_individual,\n  meta_top2_individual,\n  meta_master_individual,\n  \nnivel_alcancado,\n  gap_proxima_meta,\n  comissao_fixa_estimada,\n  comissao_dinamica_estimada\nFROM \nmarialima_vw_ai_performance_mensal \nWHERE nome_vendedor ILIKE '%' || $1 || '%'\nAND year_month = $2;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('busca') }}\n{{ $fromAI('mes_ano') }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        1936,
+        624
+      ],
+      "id": "d719c57b-91f5-4d30-b5a7-76cba6d1b927",
+      "name": "tool_performa_mensal_vendedor",
+      "credentials": {
+        "postgres": {
+          "id": "GE99tmxRz3vNhLqD",
+          "name": "Postgres - ProjectsGerais Score"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "\"Busca os resultados de vendas DIARIOS de uma loja especifica (ex: 'sobral' ou \n'itapipoca'). Use para responder perguntas como 'quanto Sobral vendeu ontem/hoje?'. O argumento 'data_venda' deve ser \nYYYY-MM-DD.\"",
+        "operation": "executeQuery",
+        "query": "SELECT \n    loja,\n    data_venda,\n    COUNT(DISTINCT nome_vendedor) AS qtd_vendedores,\n    \nSUM(valor_total_vendido) AS total_vendido,\n    SUM(quantidade_vendas) AS volume_vendas,\n    SUM(meta_minima_diaria) \nAS meta_minima_diaria_loja,\n    SUM(meta_top1_diaria) AS meta_top1_diaria_loja,\n    SUM(meta_top2_diaria) AS \nmeta_top2_diaria_loja,\n    SUM(meta_master_diaria) AS meta_master_diaria_loja,\n    SUM(comissao_fixa_diaria) AS \ncusto_comissaoes_fixas\nFROM marialima_vw_ai_performance_diaria\nWHERE loja ILIKE '%' || $1 || '%'\n  AND data_venda = \n$2::date\nGROUP BY loja, data_venda;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('nome_loja') }}\n{{ $fromAI('data_venda') }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        2352,
+        736
+      ],
+      "id": "d11ce717-7db8-43de-a739-5e56ca2d967a",
+      "name": "tool_resumo_diario_loja",
+      "credentials": {
+        "postgres": {
+          "id": "GE99tmxRz3vNhLqD",
+          "name": "Postgres - ProjectsGerais Score"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "\"Busca os resultados consolidados MENSAIS de uma loja especifica (ex: 'sobral' ou \n'itapipoca'). Retorna volume de vendas e faturamento total da loja no mes. O argumento 'mes_ano' deve ser no formato \nYYYY-MM.\"",
+        "operation": "executeQuery",
+        "query": "SELECT \n    loja,\n    year_month,\n    COUNT(DISTINCT nome_vendedor) AS qtd_vendedores,\n    \nSUM(valor_total_vendido) AS total_vendido,\n    SUM(quantidade_vendas) AS volume_vendas,\n    \nSUM(meta_minima_individual) AS meta_minima_loja,\n    SUM(meta_top1_individual) AS meta_top1_loja,\n    \nSUM(meta_top2_individual) AS meta_top2_loja,\n    SUM(meta_master_individual) AS meta_master_loja,\n    \nSUM(comissao_fixa_estimada) AS custo_comissaoes_fixas,\n    SUM(comissao_dinamica_estimada) AS \ncusto_comissaoes_dinamicas\nFROM marialima_vw_ai_performance_mensal\nWHERE loja ILIKE '%' || $1 || '%'\n  AND \nyear_month = $2\nGROUP BY loja, year_month;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('nome_loja') }}\n{{ $fromAI('mes_ano') }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        2096,
+        528
+      ],
+      "id": "f65129f4-03ac-4658-9b3d-89e9a312ba1d",
+      "name": "tool_resumo_loja",
+      "credentials": {
+        "postgres": {
+          "id": "GE99tmxRz3vNhLqD",
+          "name": "Postgres - ProjectsGerais Score"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "\"Ranking MENSAL dos melhores vendedores da empresa. Recebe 'mes_ano' (YYYY-MM) e \n'criterio' (pode ser 'faturamento', 'volume' ou 'ticket_medio'). Retorna os melhores vendedores no mes ordenados pelo \ncriterio escolhido.\"",
+        "operation": "executeQuery",
+        "query": "SELECT\n  nome_vendedor,\n  loja,\n  valor_total_vendido,\n  quantidade_vendas,\n  \n(valor_total_vendido / NULLIF(quantidade_vendas, 0)) AS ticket_medio,\n  nivel_alcancado\nFROM \nmarialima_vw_ai_performance_mensal\nWHERE year_month = $1\nORDER BY\n  CASE WHEN $2 = 'ticket_medio' THEN \n(valor_total_vendido / NULLIF(quantidade_vendas, 0)) END DESC,\n  CASE WHEN $2 = 'volume' THEN quantidade_vendas END \nDESC,\n  CASE WHEN $2 = 'faturamento' THEN valor_total_vendido END DESC,\n  valor_total_vendido DESC\nLIMIT 15;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('mes_ano') }}\n{{ $fromAI('criterio') }}",
+          "treatQueryParametersInSingleQuotesAsText": false
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        2448,
+        592
+      ],
+      "id": "61a432f6-8fd8-4458-9deb-af374a211330",
+      "name": "tool_ranking_vendedores",
+      "credentials": {
+        "postgres": {
+          "id": "GE99tmxRz3vNhLqD",
+          "name": "Postgres - ProjectsGerais Score"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Resumo Global DIÁRIO da Empresa Inteira. Soma todas as lojas em um DIA ESPECÍFICO. Usado APENAS para responder 'quanto a empresa vendeu hoje/ontem?'. Envie 'data_venda' (YYYY-MM-DD).",
+        "operation": "executeQuery",
+        "query": "SELECT \n    data_venda,\n    SUM(valor_total_vendido) AS total_vendido_global,\n    \nSUM(quantidade_vendas) AS transacoes_globais,\n    COUNT(DISTINCT nome_vendedor) AS vendedores_ativos,\n    \nSUM(meta_minima_diaria) AS meta_minima_diaria_global,\n    SUM(meta_top1_diaria) AS meta_top1_diaria_global,\n    \nSUM(meta_top2_diaria) AS meta_top2_diaria_global,\n    SUM(meta_master_diaria) AS meta_master_diaria_global,\n    \nSUM(comissao_fixa_diaria) AS total_comissaoes_fixas\nFROM marialima_vw_ai_performance_diaria\nWHERE data_venda = \n$1::date\nGROUP BY data_venda;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('data_venda') }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        2768,
+        752
+      ],
+      "id": "a600cddc-1d3b-43fe-b6bc-085e136b618a",
+      "name": "tool_resumo_global_diario_empresa",
+      "credentials": {
+        "postgres": {
+          "id": "GE99tmxRz3vNhLqD",
+          "name": "Postgres - ProjectsGerais Score"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "\"Resumo Global MENSAL da Empresa Inteira. Soma todas as lojas no mes. Usado para \n'resultado global do mes'. Envie 'mes_ano' (YYYY-MM).\"",
+        "operation": "executeQuery",
+        "query": "SELECT \n    year_month,\n    SUM(valor_total_vendido) AS total_vendido_global,\n    \nSUM(quantidade_vendas) AS transacoes_globais,\n    COUNT(DISTINCT nome_vendedor) AS vendedores_ativos,\n    \nSUM(meta_minima_individual) AS meta_minima_global,\n    SUM(meta_top1_individual) AS meta_top1_global,\n    \nSUM(meta_top2_individual) AS meta_top2_global,\n    SUM(meta_master_individual) AS meta_master_global,\n    \nSUM(comissao_fixa_estimada) AS total_comissaoes_fixas,\n    SUM(comissao_dinamica_estimada) AS \ntotal_comissaoes_dinamicas\nFROM marialima_vw_ai_performance_mensal\nWHERE year_month = $1\nGROUP BY year_month;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('mes_ano') }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        2576,
+        704
+      ],
+      "id": "2cecca03-0cb1-40c6-8629-5ef4c3ae7f22",
+      "name": "tool_resumo_global_empresa",
+      "credentials": {
+        "postgres": {
+          "id": "GE99tmxRz3vNhLqD",
+          "name": "Postgres - ProjectsGerais Score"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message }}",
+        "options": {
+          "systemMessage": "=# System Prompt - Assistente Comercial Maria Lima\n\n> HOJE É DIA *{{ $now.setZone('America/Sao_Paulo').toFormat('dd/MM/yyyy') }}* (ANO ATUAL: {{ $now.setZone('America/Sao_Paulo').toFormat('yyyy') }}).\n> A data de hoje no formato YYYY-MM-DD é *{{ $now.setZone('America/Sao_Paulo').toFormat('yyyy-MM-dd') }}*.\n> O mês atual no formato YYYY-MM é *{{ $now.setZone('America/Sao_Paulo').toFormat('yyyy-MM') }}*.\n\nVocê é um assistente de inteligência comercial altamente detalhista, explicativo e objetivo focado em extrair dados de vendas da Maria Lima.\nSua função é responder dúvidas de gestores, diretores (CEO) e vendedores sobre faturamento e metas, baseando-se EXCLUSIVAMENTE nas ferramentas (tools) fornecidas. \n\n## Suas Ferramentas SQL\n1. `tool_performa_mensal_vendedor`: Vendas de um VENDEDOR em um mês todo (MENSAL).\n2. `tool_performa_diaria_vendedor`: Vendas de um VENDEDOR em um dia exato (DIÁRIO).\n3. `tool_resumo_loja`: Vendas consolidadas de uma LOJA no mês todo (MENSAL).\n4. `tool_resumo_diario_loja`: Vendas consolidadas de uma LOJA em um dia exato (DIÁRIO). Use para responder \"quanto Sobral vendeu hoje/ontem?\".\n5. `tool_ranking_vendedores`: Rankings de vendedores no mês.\n6. `tool_ranking_diario_vendedores`: Ranking de vendedores em um DIA EXATO (DIÁRIO). Use para \"ranking de hoje\".\n7. `tool_resumo_global_empresa`: Faturamento global MENSAL de toda a empresa somada.\n8. `tool_resumo_global_diario_empresa`: Faturamento global DIÁRIO de toda a empresa somada. Use para \"quanto a empresa vendeu hoje?\".\n9. `tool_metas_semanais_vendedores`: Metas e performance SEMANAIS dos VENDEDORES. Use SEMPRE que perguntarem sobre \"meta semanal dos vendedores\", \"meta da semana de todos os vendedores de Sobral/Itapipoca\", \"como estamos na meta semanal\", ou a meta semanal de um vendedor específico. Retorna o total vendido na semana, metas da semana (Mínima, Top 1, Top 2, Master), % atingido, nível alcançado e quanto falta. Envie 'busca' ('Sobral', 'Itapipoca', o nome de um vendedor ou 'todas') e 'data_referencia' (YYYY-MM-DD da semana desejada ou data de hoje).\n10. `tool_resumo_semanal_loja`: Resumo e metas SEMANAIS consolidadas de uma LOJA ou da EMPRESA inteira somada. Use para \"como fomos na semana atual?\", \"quanto vendemos na semana passada?\", \"como a loja de Sobral está na meta semanal?\", \"qual o faturamento semanal da loja/empresa?\". Envie 'nome_loja' ('Sobral', 'Itapipoca' ou 'todas') e 'data_referencia' (YYYY-MM-DD da semana desejada).\n\n## Tratamento de Datas (MUITO IMPORTANTE)\n- **ANO E DATA ATUAL:** Estamos rigorosamente no ano {{ $now.setZone('America/Sao_Paulo').toFormat('yyyy') }}. A data de referência de hoje é {{ $now.setZone('America/Sao_Paulo').toFormat('yyyy-MM-dd') }}. NUNCA invente ou use anos antigos (como 2023 ou 2024).\n- Se o usuário pedir \"mês atual\", \"este mês\", \"hoje\" ou \"agora\", use OBRIGATORIAMENTE a variável do mês atual `{{ $now.setZone('America/Sao_Paulo').toFormat('yyyy-MM') }}` para o parâmetro `mes_ano`.\n- Para buscar dados de um ÚNICO DIA (ex: \"ontem\", \"hoje\", \"dia 15\"), não use o formato YYYY-MM. Você deve converter para a data exata no formato `YYYY-MM-DD` (ex: {{ $now.setZone('America/Sao_Paulo').toFormat('yyyy-MM') }}-15) e chamar as FERRAMENTAS DIÁRIAS dependendo do que o usuário pediu.\n- **Semanas e Metas Semanais (REGRA FUNDAMENTAL):**\n  - O ciclo comercial semanal vai de **Segunda-feira** a **Domingo** (ou Sábado).\n  - Quando o usuário perguntar sobre a **\"semana atual\"**, **\"esta semana\"**, **\"meta semanal\"**, **\"como fomos na semana atual\"**, **\"como estamos na meta semanal\"** ou **\"meta da semana\"**:\n    - Use SEMPRE a data de hoje `{{ $now.setZone('America/Sao_Paulo').toFormat('yyyy-MM-dd') }}` como `data_referencia`. O banco de dados calcula automaticamente a Segunda-feira de início e o Domingo de fim da semana atual.\n  - Quando o usuário perguntar sobre a **\"semana passada\"** (ex: *\"quanto vendemos na semana passada?\"*):\n    - Calcule uma data 7 dias antes da data de hoje no formato YYYY-MM-DD no ano {{ $now.setZone('America/Sao_Paulo').toFormat('yyyy') }} (por exemplo, se hoje é {{ $now.setZone('America/Sao_Paulo').toFormat('yyyy-MM-dd') }}, envie a data de 7 dias atrás como `data_referencia`). O banco de dados calcula automaticamente o início (Segunda-feira) e o fim (Domingo) da semana passada.\n  - Para dúvidas sobre **o faturamento ou meta semanal da empresa ou loja como um todo** (ex: *\"Quanto vendemos na semana passada?\"*, *\"Como fomos na semana atual?\"*, *\"Como Sobral está na meta semanal?\"*):\n    - Chame `tool_resumo_semanal_loja` passando `nome_loja` (\"Sobral\", \"Itapipoca\" ou \"todas\") e `data_referencia`.\n  - Para dúvidas sobre **o desempenho ou meta semanal dos vendedores** (ex: *\"Como estamos na meta semanal de todos os vendedores de Sobral?\"*, *\"Qual a meta semanal da Ana Silva?\"*):\n    - Chame `tool_metas_semanais_vendedores` passando `busca` (\"Sobral\", \"Itapipoca\", \"todas\" ou o nome do vendedor) e `data_referencia`.\n    - Se desejar enriquecer a resposta com os totais consolidados da loja, chame também `tool_resumo_semanal_loja`.\n- Se o usuário falar de meses passados (ex: \"mês passado\", \"maio\"), calcule ou infira o formato `YYYY-MM` com base na data de hoje.\n- **Trimestres:** Calcule RIGOROSAMENTE com base no calendário anual (Q1: Jan a Mar | Q2: Abr a Jun | Q3: Jul a Set | Q4: Out a Dez). NUNCA invente períodos trimestrais sobrepostos. Chame a ferramenta para cada mês individualmente.\n- Nunca mande nomes de meses em texto para as ferramentas, SEMPRE passe no formato exato `YYYY-MM` (mensal) ou `YYYY-MM-DD` (diário e semanal).\n\n## Regras Inegociáveis\n1. **Nome da Empresa vs Vendedora (CRÍTICO):** A nossa empresa se chama \"Maria Lima\". Se o usuário perguntar sobre as vendas da \"Maria Lima\", ele está quase sempre se referindo à empresa inteira ou à uma loja específica (ex: \"Maria Lima Sobral\" = loja de Sobral). NUNCA busque por uma vendedora chamada Maria Lima a menos que o usuário deixe muito explícito que está falando de uma funcionária.\n2. **Foco Exclusivo (Guardrail):** Você é ESTRITAMENTE um assistente comercial da Maria Lima. Se o usuário perguntar sobre QUALQUER outro assunto (clima, piadas, programação, conhecimentos gerais), recuse-se a responder educadamente e afirme: \"Sou programado exclusivamente para falar sobre as vendas da Maria Lima.\"\n3. **Zero Cálculo Inventado:** Proibido Fazer Cálculos Complexos de Comissões e Metas do zero. O banco de dados já envia as colunas calculadas. Se precisar fazer somas simples (ex: somar 3 meses para um trimestre), pode fazer. Mas não tente deduzir a meta sozinho.\n4. **Explicativo:** Diretores e gestores gostam de ler dados bem mastigados. Sempre traga *insights* nas respostas. Se uma loja caiu de faturamento em relação a outro mês, destaque a queda em percentual. Se um vendedor bateu a meta semanal ou mensal, comemore.\n5. **Múltiplos Nomes:** Se a busca por um vendedor retornar vários nomes, liste-os e pergunte de qual a pessoa está falando.\n6. **Veracidade:** Nunca minta ou invente dados. Se a ferramenta não retornar resultados, diga claramente: \"Não encontrei registros para este vendedor/loja neste período.\"\n7. **Apresentação de Capacidades:** Se o usuário perguntar o que você sabe fazer, quais indicadores acompanha ou pedir exemplos, seja proativo. Diga que você consolida dados de faturamento (mensal, semanal e diário), metas semanais e mensais por vendedor ou filial, ticket médio, rankings (por volume, ticket ou faturamento) e comissões. Forneça exemplos práticos do que o usuário pode te perguntar (ex: *\"Como estamos na meta semanal de todos os vendedores de Sobral?\"*, *\"Quanto a loja de Sobral faturou ontem?\"*, *\"Quem são os top 5 vendedores da semana?\"*).\n\n## Estilo e Formatação da Resposta (MUITO IMPORTANTE PARA WHATSAPP)\nSua resposta final será enviada pelo WhatsApp. Portanto, você é OBRIGADO a usar a formatação nativa do WhatsApp e NÃO o Markdown tradicional.\n- Use UM ASTERISCO para negrito: `*texto*` (NUNCA use `**texto**`).\n- Use UNDERLINE para itálico: `_texto_`.\n- NÃO use hashtags `#` ou `##` para títulos. Para criar títulos, use letras maiúsculas e asteriscos: `*RESUMO DE VENDAS*`.\n- Formate TODOS os valores monetários no formato Real Brasileiro (ex: *R$ 35.120,50*).\n- Use bullet points (`-` ou `•`) acompanhados de emojis (🚀, 💰, 🏆, 🏢, 🎯) para separar os raciocínios.\n\n---\n\n# 📋 EXEMPLOS DE SAÍDA NO FORMATO DO WHATSAPP (Copie este estilo)\n\n### Exemplo 1: Pergunta sobre o Mês de um Vendedor\n*👤 Vendedor:* Ana Silva  \n*🏢 Loja:* Sobral | *📅 Mês:* Junho/2026  \n\n*📊 Resumo de Vendas*  \n- *Total Vendido:* R$ 42.500,00  \n- *Volume de Operações:* 120 vendas  \n\n*🎯 Performance e Metas*  \n- *Status Atual:* Meta Top 2 🚀  \n- *Comissão Fixa (Garantida):* R$ 425,00  \n- *Comissão Dinâmica (Estimada):* R$ 637,50  \n\n_⚠️ Insight de Gestão:_ Faltam apenas *R$ 7.500,00* em vendas para estourar a meta *Master*! Vai pra cima!\n\n---\n\n### Exemplo 2: Pergunta Comparativa do Vendedor\n*👤 Vendedor:* João Souza | *🏢 Loja:* Itapipoca\n\n*📅 Maio/2026:*\n- *Total Vendido:* R$ 15.000,00 (15 vendas)\n- *Nível Atingido:* Mínima\n- *Comissões Totais Estimadas:* R$ 300,00\n\n*📅 Junho/2026:*\n- *Total Vendido:* R$ 45.000,00 (48 vendas)\n- *Nível Atingido:* Top 2 🚀\n- *Comissões Totais Estimadas:* R$ 1.125,00\n\n*📈 Análise de Evolução:* \nO vendedor João Souza teve um *crescimento explosivo*! O faturamento saltou de R$ 15.000,00 para R$ 45.000,00 (triplicou o faturamento). Ele saiu da meta Mínima e alcançou com sucesso a meta Top 2 em Junho. Um excelente mês!\n\n---\n\n### Exemplo 3: Pergunta de Loja (\"Qual foi o faturamento da loja de Sobral esse mês?\")\n*🏢 Loja:* Sobral\n*📅 Mês de Referência:* Junho/2026\n\n*📊 Consolidado Geral:*\n- *Faturamento Total:* R$ 450.000,00 💰\n- *Transações:* 1.840 vendas fechadas\n- *Força de Vendas:* 12 vendedores ativos no mês\n\n*💸 Despesas Estimadas com Time:*\n- *Custos em Comissão Fixa:* R$ 4.500,00\n- *Custos em Comissão Dinâmica:* R$ 8.900,00\n\n_📝 Resumo:_ A loja performou de forma saudável, mantendo a força de vendas puxando os resultados. \n\n---\n\n### Exemplo 4: Pergunta de Ranking (\"Quem foram os top 5 vendedores do mês?\")\n*🏆 Ranking de Vendas - Top 5 (Mês: Junho/2026)*\n\nAqui estão os destaques do mês, ordenados pelo volume de vendas faturadas:\n\n*🥇 1º Lugar: Carlos Eduardo* (Sobral)\n- *Faturou:* R$ 125.000,00 (Bateu Meta: Master 🚀)\n\n*🥈 2º Lugar: Ana Beatriz* (Itapipoca)\n- *Faturou:* R$ 85.000,00 (Bateu Meta: Top 2 ⭐)\n\n*🥉 3º Lugar: Ana Silva* (Sobral)\n- *Faturou:* R$ 42.500,00 (Bateu Meta: Top 1)\n\n_📝 Nota:_ O vendedor Carlos Eduardo dominou a liderança disparado neste período.\n\n---\n\n### Exemplo 5: Visão CEO Macro (\"Qual foi o faturamento total da empresa toda nos últimos 2 meses?\")\n*🏢 Resultado Global da Maria Lima*\n\nAqui estão os dados consolidados somando a performance de todas as operações:\n\n*📅 Maio/2026:*\n- *Faturamento Total Global:* R$ 650.000,00\n- *Vendedores Ativos:* 21 vendedores\n- *Custos de Comissão:* R$ 16.500,00\n\n*📅 Junho/2026:*\n- *Faturamento Total Global:* R$ 780.000,00 🚀\n- *Vendedores Ativos:* 23 vendedores\n- *Custos de Comissão:* R$ 22.000,00\n\n*📈 Visão do Negócio:*\nA empresa toda faturou *R$ 1.430.000,00* neste bimestre. Houve um crescimento global de 20% no faturamento, um cenário de tração muito positivo para a diretoria!\n\n---\n\n### Exemplo 6: Pergunta Diária Específica (\"Quanto a Ana vendeu ontem?\")\n*👤 Vendedor:* Ana Silva  \n*🏢 Loja:* Sobral | *📅 Data:* 15/Junho/2026 (Ontem)\n\n*📊 Performance do Dia*  \n- *Total Vendido no Dia:* R$ 5.200,00  \n- *Quantidade de Vendas:* 8 operações  \n- *Ticket Médio:* R$ 650,00  \n\n*🎯 Análise da Meta Diária*  \n- *Nível Diário Alcançado:* Top 2 🚀  \n- *Comissão Fixa (Dia):* R$ 52,00  \n\n_⚠️ Insight do Dia:_ Excelente dia de vendas! Você bateu a sua meta diária Top 2 e faltaram apenas *R$ 1.800,00* para alcançar a dificílima meta diária Master. Continue nesse ritmo!\n\n---\n\n### Exemplo 7: Meta Semanal de Todos os Vendedores (\"Como estamos na meta semanal de todos os vendedores de Sobral?\")\n*🏢 Loja:* Sobral  \n*📅 Período Semanal:* 28/09 a 04/10/2026  \n\n*🎯 ACOMPANHAMENTO DA META SEMANAL DO TIME*\n\nAqui está a performance de cada vendedor de Sobral na meta semanal (referência Meta Top 1):\n\n*🥇 1º Carlos Eduardo*\n- *Vendido na Semana:* R$ 22.400,00 (38 vendas)\n- *Meta Top 1 Semanal:* R$ 18.333,33\n- *Atingimento:* 122,2% — *Bateu Meta Top 2!* 🚀\n- *Ticket Médio:* R$ 589,47\n\n*🥈 2º Ana Beatriz*\n- *Vendido na Semana:* R$ 17.500,00 (26 vendas)\n- *Meta Top 1 Semanal:* R$ 18.333,33\n- *Atingimento:* 95,5% — *Meta Mínima Garantida* ⭐\n- *Faltam para Top 1:* R$ 833,33\n\n*🥉 3º Ana Silva*\n- *Vendido na Semana:* R$ 14.500,00 (22 vendas)\n- *Meta Top 1 Semanal:* R$ 18.333,33\n- *Atingimento:* 79,1% — *Abaixo da Mínima* 🏃\n- *Faltam para Top 1:* R$ 3.833,33\n\n---\n*📊 Consolidado da Semana (Loja Sobral):*\n- *Total Vendido na Semana:* R$ 54.400,00 💰\n- *Meta Semanal da Loja (Top 1):* R$ 55.000,00 (98,9% atingido)\n- *Falta para bater Top 1:* apenas *R$ 600,00*!\n\n_⚠️ Insight de Gestão:_ A loja está a um passo da meta semanal! Carlos Eduardo já superou a meta, e com mais 1 ou 2 fechamentos da equipe hoje, Sobral estoura o Top 1 com sucesso! 🚀\n\n---\n\n### Exemplo 8: Meta Semanal de Vendedor Específico (\"Como a Ana Silva está na meta da semana?\")\n*👤 Vendedora:* Ana Silva  \n*🏢 Loja:* Sobral | *📅 Semana:* 28/09 a 04/10/2026  \n\n*📊 Performance na Semana:*\n- *Total Vendido:* R$ 14.500,00 (22 operações)\n- *Ticket Médio:* R$ 659,09\n\n*🎯 Metas Semanais:*\n- *Meta Mínima:* R$ 15.000,00\n- *Meta Top 1:* R$ 18.333,33\n- *Meta Top 2:* R$ 21.666,67\n- *Meta Master:* R$ 25.000,00\n- *Atingimento da Meta Top 1:* 79,1%\n- *Status:* Abaixo da Mínima 🏃\n\n_⚠️ Insight:_ Faltam *R$ 500,00* para bater a Mínima e *R$ 3.833,33* para a Meta Top 1. Com o ticket médio atual, 5 a 6 vendas novas são suficientes para virar o jogo antes do fim da semana! Pra cima! 💪"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        2128,
+        272
+      ],
+      "id": "07d8b633-a1cb-4617-ad54-f70ebb632c55",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1936,
+        432
+      ],
+      "id": "0727d789-5960-45fd-8688-65b3c31f655e",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "5jH8Yagb90DwRU30",
+          "name": "OpenRouter"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Ranking DIÁRIO dos melhores vendedores da empresa. Recebe 'data_venda' (YYYY-MM-DD) e 'criterio' (pode ser 'faturamento', 'volume' ou 'ticket_medio'). Retorna os melhores vendedores no dia ordenados pelo criterio escolhido.",
+        "operation": "executeQuery",
+        "query": "SELECT\n  nome_vendedor,\n  loja,\n  valor_total_vendido,\n  quantidade_vendas,\n  ticket_medio,\n  \nnivel_alcancado_diario AS nivel_alcancado\nFROM marialima_vw_ai_performance_diaria\nWHERE data_venda = $1::date\nORDER \nBY\n  CASE WHEN $2 = 'ticket_medio' THEN ticket_medio END DESC,\n  CASE WHEN $2 = 'volume' THEN quantidade_vendas END \nDESC,\n  CASE WHEN $2 = 'faturamento' THEN valor_total_vendido END DESC,\n  valor_total_vendido DESC\nLIMIT 15;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('data_venda') }}\n{{ $fromAI('criterio') }}",
+          "treatQueryParametersInSingleQuotesAsText": false
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        2832,
+        576
+      ],
+      "id": "e5ce0cf0-2cf9-444d-ac0f-4e02327da81e",
+      "name": "tool_ranking_diario_vendedores",
+      "credentials": {
+        "postgres": {
+          "id": "GE99tmxRz3vNhLqD",
+          "name": "Postgres - ProjectsGerais Score"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Retorna o acompanhamento de metas SEMANAIS e o desempenho de vendas dos vendedores no ciclo semanal (segunda a domingo). Use para responder sobre metas semanais dos vendedores de uma loja (ex: 'como estamos na meta semanal de Sobral?'), de todas as lojas somadas ou de um vendedor individual. O argumento 'busca' pode ser o nome da loja ('Sobral', 'Itapipoca'), o nome do vendedor ('Ana Silva') ou 'todas' para todos os vendedores. O argumento 'data_referencia' deve ser YYYY-MM-DD (qualquer dia da semana desejada; para semana passada envie data de 7 dias atrás; use a data de hoje para a semana atual).",
+        "operation": "executeQuery",
+        "query": "WITH parames AS (\n  SELECT \n    date_trunc('week', COALESCE(NULLIF($2::text, '')::date, CURRENT_DATE))::date AS dt_inicio,\n    (date_trunc('week', COALESCE(NULLIF($2::text, '')::date, CURRENT_DATE))::date + interval '6 days')::date AS dt_fim\n)\nSELECT \n    d.nome_vendedor,\n    d.loja,\n    parames.dt_inicio AS periodo_inicio,\n    parames.dt_fim AS periodo_fim,\n    COUNT(DISTINCT d.data_venda) AS dias_com_movimento,\n    SUM(d.quantidade_vendas) AS quantidade_vendas,\n    SUM(d.valor_total_vendido) AS valor_total_vendido,\n    ROUND(SUM(d.valor_total_vendido) / NULLIF(SUM(d.quantidade_vendas), 0), 2) AS ticket_medio,\n    SUM(d.meta_minima_diaria) AS meta_minima_semanal,\n    SUM(d.meta_top1_diaria) AS meta_top1_semanal,\n    SUM(d.meta_top2_diaria) AS meta_top2_semanal,\n    SUM(d.meta_master_diaria) AS meta_master_semanal,\n    ROUND((SUM(d.valor_total_vendido) / NULLIF(SUM(d.meta_top1_diaria), 0)) * 100, 1) AS percentual_atingimento_top1,\n    CASE \n      WHEN SUM(d.meta_master_diaria) > 0 AND SUM(d.valor_total_vendido) >= SUM(d.meta_master_diaria) THEN 'Master'\n      WHEN SUM(d.meta_top2_diaria) > 0 AND SUM(d.valor_total_vendido) >= SUM(d.meta_top2_diaria) THEN 'Top 2'\n      WHEN SUM(d.meta_top1_diaria) > 0 AND SUM(d.valor_total_vendido) >= SUM(d.meta_top1_diaria) THEN 'Top 1'\n      WHEN SUM(d.meta_minima_diaria) > 0 AND SUM(d.valor_total_vendido) >= SUM(d.meta_minima_diaria) THEN 'Minima'\n      ELSE 'Abaixo da Minima'\n    END AS nivel_alcancado_semanal,\n    CASE \n      WHEN SUM(d.valor_total_vendido) >= SUM(d.meta_top1_diaria) THEN 0\n      ELSE GREATEST(0, ROUND(SUM(d.meta_top1_diaria) - SUM(d.valor_total_vendido), 2))\n    END AS gap_meta_top1,\n    SUM(d.comissao_fixa_diaria) AS comissao_fixa_semanal\nFROM marialima_vw_ai_performance_diaria d\nCROSS JOIN parames\nWHERE \n  ($1::text IS NULL OR $1::text = '' OR $1 ILIKE '%todas%' OR $1 ILIKE '%global%' OR $1 ILIKE '%empresa%' OR d.loja ILIKE '%' || $1 || '%' OR d.nome_vendedor ILIKE '%' || $1 || '%')\n  AND d.data_venda >= parames.dt_inicio\n  AND d.data_venda <= parames.dt_fim\nGROUP BY d.nome_vendedor, d.loja, parames.dt_inicio, parames.dt_fim\nORDER BY SUM(d.valor_total_vendido) DESC;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('busca') || 'todas' }}\n{{ $fromAI('data_referencia') || $now.setZone('America/Sao_Paulo').toFormat('yyyy-MM-dd') }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        1936,
+        864
+      ],
+      "id": "a477a299-ceb6-43b5-8656-d77f51be0e52",
+      "name": "tool_metas_semanais_vendedores",
+      "credentials": {
+        "postgres": {
+          "id": "GE99tmxRz3vNhLqD",
+          "name": "Postgres - ProjectsGerais Score"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Retorna o faturamento e as metas consolidadas de uma LOJA ou da EMPRESA INTEIRA em uma SEMANA (segunda a domingo). Use para perguntas como 'como a loja de Sobral está na meta semanal?', 'qual o resultado da semana da empresa?', 'como fomos na semana atual?', 'quanto vendemos na semana passada?'. Retorna total vendido na semana, metas da loja/empresa (Minima, Top 1, Top 2, Master), % de atingimento da meta Top 1, nível alcançado e quantidade de vendedores ativos. Argumentos: 'nome_loja' ('Sobral', 'Itapipoca' ou 'todas' para consolidado geral), 'data_referencia' (YYYY-MM-DD de qualquer dia da semana desejada; para semana passada envie data de 7 dias atrás; para semana atual envie a data de hoje).",
+        "operation": "executeQuery",
+        "query": "WITH parames AS (\n  SELECT \n    date_trunc('week', COALESCE(NULLIF($2::text, '')::date, CURRENT_DATE))::date AS dt_inicio,\n    (date_trunc('week', COALESCE(NULLIF($2::text, '')::date, CURRENT_DATE))::date + interval '6 days')::date AS dt_fim\n)\nSELECT \n    d.loja,\n    parames.dt_inicio AS periodo_inicio,\n    parames.dt_fim AS periodo_fim,\n    COUNT(DISTINCT d.nome_vendedor) AS qtd_vendedores_ativos,\n    SUM(d.valor_total_vendido) AS total_vendido,\n    SUM(d.quantidade_vendas) AS volume_vendas,\n    ROUND(SUM(d.valor_total_vendido) / NULLIF(SUM(d.quantidade_vendas), 0), 2) AS ticket_medio,\n    SUM(d.meta_minima_diaria) AS meta_minima_semanal_loja,\n    SUM(d.meta_top1_diaria) AS meta_top1_semanal_loja,\n    SUM(d.meta_top2_diaria) AS meta_top2_semanal_loja,\n    SUM(d.meta_master_diaria) AS meta_master_semanal_loja,\n    ROUND((SUM(d.valor_total_vendido) / NULLIF(SUM(d.meta_top1_diaria), 0)) * 100, 1) AS percentual_atingimento_top1,\n    CASE \n      WHEN SUM(d.meta_master_diaria) > 0 AND SUM(d.valor_total_vendido) >= SUM(d.meta_master_diaria) THEN 'Master'\n      WHEN SUM(d.meta_top2_diaria) > 0 AND SUM(d.valor_total_vendido) >= SUM(d.meta_top2_diaria) THEN 'Top 2'\n      WHEN SUM(d.meta_top1_diaria) > 0 AND SUM(d.valor_total_vendido) >= SUM(d.meta_top1_diaria) THEN 'Top 1'\n      WHEN SUM(d.meta_minima_diaria) > 0 AND SUM(d.valor_total_vendido) >= SUM(d.meta_minima_diaria) THEN 'Minima'\n      ELSE 'Abaixo da Minima'\n    END AS nivel_alcancado_loja,\n    CASE \n      WHEN SUM(d.valor_total_vendido) >= SUM(d.meta_top1_diaria) THEN 0\n      ELSE GREATEST(0, ROUND(SUM(d.meta_top1_diaria) - SUM(d.valor_total_vendido), 2))\n    END AS gap_meta_top1,\n    SUM(d.comissao_fixa_diaria) AS custo_comissaoes_fixas\nFROM marialima_vw_ai_performance_diaria d, parames\nWHERE ($1::text IS NULL OR $1::text = '' OR $1 ILIKE '%todas%' OR $1 ILIKE '%global%' OR $1 ILIKE '%empresa%' OR d.loja ILIKE '%' || $1 || '%')\n  AND d.data_venda >= parames.dt_inicio\n  AND d.data_venda <= parames.dt_fim\nGROUP BY d.loja, parames.dt_inicio, parames.dt_fim\nORDER BY SUM(d.valor_total_vendido) DESC;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('nome_loja') || 'todas' }}\n{{ $fromAI('data_referencia') || $now.setZone('America/Sao_Paulo').toFormat('yyyy-MM-dd') }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        2416,
+        832
+      ],
+      "id": "28e75ec6-0893-4a60-b820-43b0cc25f984",
+      "name": "tool_resumo_semanal_loja",
+      "credentials": {
+        "postgres": {
+          "id": "GE99tmxRz3vNhLqD",
+          "name": "Postgres - ProjectsGerais Score"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "marialima_profiles",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "agente_ia",
+              "condition": "is",
+              "keyValue": "true"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -3088,
+        368
+      ],
+      "id": "ebde67a2-0025-4e83-91ab-2620c5e8f435",
+      "name": "usuarios-acesso",
+      "credentials": {
+        "supabaseApi": {
+          "id": "fFuNdE7pSHIx32Sh",
+          "name": "Score"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8b44a5f8-c15f-490e-9f1d-a8f0d764fbac",
+              "leftValue": "={{ $json.body.data.key.fromMe }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -3312,
+        384
+      ],
+      "id": "e7e7d1bc-3152-47ad-aae6-72edd3c4282f",
+      "name": "fromMe"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nlet senderRaw = '';\ntry {\n  const webhookData = $('Webhook').first().json;\n  senderRaw = String(webhookData.body?.data?.key?.remoteJid || webhookData.body?.sender || webhookData.body?.data?.remoteJid || '').split('@')[0];\n} catch (e) {\n  senderRaw = '';\n}\n\n// Extrai apenas os ultimos 8 digitos do remetente\nconst senderDigits = senderRaw.replace(/\\D/g, '').slice(-8);\n\n// Normaliza os numeros autorizados vindos do Supabase\nconst numbers = items\n  .map(item => String(item.json?.whatsapp || item.json?.telefone || '').replace(/\\D/g, '').slice(-8))\n  .filter(digits => digits.length >= 8);\n\nconst isAuthorized = senderDigits.length >= 8 && numbers.includes(senderDigits);\n\nreturn [{\n  json: {\n    isAuthorized,\n    senderDigits,\n    totalAutorizados: numbers.length\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2864,
+        368
+      ],
+      "id": "7a3a1da5-986f-4244-94e1-1624a633ee23",
+      "name": "normalizar-numeros"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "05a4d9a2-df37-468d-81a8-c7609f1ab0ed",
+              "leftValue": "={{ $json.isAuthorized }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -2688,
+        368
+      ],
+      "id": "43e33c62-aba1-4cea-a06b-c337db1dcd87",
+      "name": "autorizado"
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "DDI",
+        "remoteJid": "={{ $('dados').item.json.whatsapp }}",
+        "messageText": "={{ $json.output }}",
+        "options_message": {
+          "delay": 1200
+        }
+      },
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        2784,
+        272
+      ],
+      "id": "500c9814-eb82-4309-97e1-6bba0d83bf04",
+      "name": "Enviar texto1",
+      "credentials": {
+        "evolutionApi": {
+          "id": "pXMX5bykkTaDf7hr",
+          "name": "evolution"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Redis Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "insereMessageUser",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "Chat Memory Manager",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "chaveBlock",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Redis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "chaveBlock": {
+      "main": [
+        [
+          {
+            "node": "Chat Memory Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "insereMessageUser",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "buffer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "buffer": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "buffer2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "buffer2": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Redis1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis1": {
+      "main": [
+        [
+          {
+            "node": "mensagemFinal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "mensagemFinal": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "message": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "dados": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "fromMe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "textMessage",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Obter Midia em Base64",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "textMessage": {
+      "main": [
+        [
+          {
+            "node": "message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "transcricao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "transcricao": {
+      "main": [
+        [
+          {
+            "node": "message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obter Midia em Base64": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tool_performa_diaria_vendedor": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tool_performa_mensal_vendedor": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tool_resumo_diario_loja": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tool_resumo_loja": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tool_ranking_vendedores": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tool_resumo_global_diario_empresa": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tool_resumo_global_empresa": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Enviar texto1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tool_ranking_diario_vendedores": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tool_metas_semanais_vendedores": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tool_resumo_semanal_loja": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "usuarios-acesso": {
+      "main": [
+        [
+          {
+            "node": "normalizar-numeros",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fromMe": {
+      "main": [
+        [
+          {
+            "node": "usuarios-acesso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "normalizar-numeros": {
+      "main": [
+        [
+          {
+            "node": "autorizado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "autorizado": {
+      "main": [
+        [
+          {
+            "node": "dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "Webhook": [
+      {
+        "headers": {
+          "host": "n8n-n8n.j6kpgx.easypanel.host",
+          "user-agent": "axios/1.13.2",
+          "content-length": "1870",
+          "accept": "application/json, text/plain, */*",
+          "accept-encoding": "gzip, compress, deflate, br",
+          "content-type": "application/json",
+          "x-forwarded-for": "172.18.0.1",
+          "x-forwarded-host": "n8n-n8n.j6kpgx.easypanel.host",
+          "x-forwarded-port": "443",
+          "x-forwarded-proto": "https",
+          "x-forwarded-server": "d64da704deb3",
+          "x-real-ip": "172.18.0.1"
+        },
+        "params": {},
+        "query": {},
+        "body": {
+          "event": "messages.upsert",
+          "instance": "DDI-ML",
+          "data": {
+            "key": {
+              "remoteJid": "558888634517@s.whatsapp.net",
+              "remoteJidAlt": "558888634517@s.whatsapp.net",
+              "fromMe": false,
+              "id": "3EB07D0D9E30F8E413C26B",
+              "participant": "",
+              "addressingMode": "lid"
+            },
+            "pushName": "Lucas",
+            "status": "DELIVERY_ACK",
+            "message": {
+              "messageContextInfo": {
+                "threadId": [],
+                "deviceListMetadata": {
+                  "senderKeyIndexes": [],
+                  "recipientKeyIndexes": [],
+                  "senderKeyHash": {
+                    "0": 235,
+                    "1": 41,
+                    "2": 227,
+                    "3": 108,
+                    "4": 173,
+                    "5": 105,
+                    "6": 35,
+                    "7": 243,
+                    "8": 225,
+                    "9": 2
+                  },
+                  "senderTimestamp": {
+                    "low": 1790879190,
+                    "high": 0,
+                    "unsigned": true
+                  },
+                  "senderAccountType": 0,
+                  "receiverAccountType": 1,
+                  "recipientKeyHash": {
+                    "0": 213,
+                    "1": 215,
+                    "2": 138,
+                    "3": 119,
+                    "4": 178,
+                    "5": 183,
+                    "6": 86,
+                    "7": 251,
+                    "8": 94,
+                    "9": 164
+                  },
+                  "recipientTimestamp": {
+                    "low": 1790781945,
+                    "high": 0,
+                    "unsigned": true
+                  }
+                },
+                "deviceListMetadataVersion": 2,
+                "messageSecret": {
+                  "0": 138,
+                  "1": 229,
+                  "2": 100,
+                  "3": 112,
+                  "4": 3,
+                  "5": 115,
+                  "6": 189,
+                  "7": 146,
+                  "8": 165,
+                  "9": 149,
+                  "10": 102,
+                  "11": 57,
+                  "12": 124,
+                  "13": 103,
+                  "14": 130,
+                  "15": 174,
+                  "16": 77,
+                  "17": 110,
+                  "18": 250,
+                  "19": 230,
+                  "20": 112,
+                  "21": 212,
+                  "22": 226,
+                  "23": 109,
+                  "24": 0,
+                  "25": 30,
+                  "26": 73,
+                  "27": 45,
+                  "28": 33,
+                  "29": 119,
+                  "30": 240,
+                  "31": 255
+                },
+                "limitSharingV2": {
+                  "sharingLimited": false,
+                  "trigger": 0,
+                  "limitSharingSettingTimestamp": {
+                    "low": 0,
+                    "high": 0,
+                    "unsigned": false
+                  },
+                  "initiatedByMe": false
                 }
+              },
+              "conversation": "e nessa semana"
+            },
+            "contextInfo": {
+              "mentionedJid": [],
+              "groupMentions": [],
+              "statusAttributions": [],
+              "ephemeralSettingTimestamp": {
+                "low": 1790723164,
+                "high": 0,
+                "unsigned": false
+              },
+              "disappearingMode": {
+                "initiator": 0,
+                "trigger": 1,
+                "initiatedByMe": false
+              }
+            },
+            "messageType": "conversation",
+            "messageTimestamp": 1790896004,
+            "instanceId": "a527632b-1466-47bb-a89f-5d878e27675e",
+            "source": "web"
+          },
+          "destination": "https://n8n-n8n.j6kpgx.easypanel.host/webhook/marialima",
+          "date_time": "2026-10-01T20:06:44.377Z",
+          "sender": "558892320457@s.whatsapp.net",
+          "server_url": "https://evolution-api-evolution-api.j6kpgx.easypanel.host",
+          "apikey": "13B160920393-4D07-A7EC-0FC8E30562BE"
+        },
+        "webhookUrl": "https://n8n-n8n.j6kpgx.easypanel.host/webhook/marialima",
+        "executionMode": "production"
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a99194fe198f43c4196416bd74c39e4c12f9f9c04da6fd38082c22a0fd417450"
+  }
 }
