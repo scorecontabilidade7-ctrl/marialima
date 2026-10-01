@@ -444,28 +444,47 @@
                   },
                   {
                       "parameters":  {
-                                         "resource":  "messages-api",
-                                         "instanceName":  "={{ dados.first().json.instancia || Webhook.first().json.body.instance || 'DDI' }}",
-                                         "remoteJid":  "={{ dados.first().json.whatsapp || Webhook.first().json.body.data.key.remoteJid }}",
-                                         "messageText":  "={{ .output || .text }}",
-                                         "options_message":  {
-                                                                 "delay":  1200
-                                                             }
+                                         "method":  "POST",
+                                         "url":  "https://SEU_DOMINIO_EVOLUTION/message/sendText/DDI",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "apikey",
+                                                                                         "value":  "SUA_API_KEY_EVOLUTION"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "sendBody":  true,
+                                         "contentType":  "json",
+                                         "bodyParameters":  {
+                                                                "parameters":  [
+                                                                                   {
+                                                                                       "name":  "number",
+                                                                                       "value":  "={{ dados.item.json.whatsapp }}"
+                                                                                   },
+                                                                                   {
+                                                                                       "name":  "text",
+                                                                                       "value":  "={{ .output }}"
+                                                                                   },
+                                                                                   {
+                                                                                       "name":  "delay",
+                                                                                       "value":  1200
+                                                                                   }
+                                                                               ]
+                                                            },
+                                         "options":  {
+
+                                                     }
                                      },
-                      "type":  "n8n-nodes-evolution-api.evolutionApi",
-                      "typeVersion":  1,
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.2,
                       "position":  [
                                        2848,
                                        320
                                    ],
                       "id":  "bcdca2f8-8ebb-4bee-8e91-0b6d41caef98",
-                      "name":  "Enviar texto",
-                      "credentials":  {
-                                          "evolutionApi":  {
-                                                               "id":  "pXMX5bykkTaDf7hr",
-                                                               "name":  "evolution"
-                                                           }
-                                      }
+                      "name":  "Enviar texto"
                   },
                   {
                       "parameters":  {
@@ -652,25 +671,43 @@
                   },
                   {
                       "parameters":  {
-                                         "resource":  "chat-api",
-                                         "operation":  "get-media-base64",
-                                         "instanceName":  "={{ $('dados').item.json.instancia }}",
-                                         "messageId":  "={{ $('dados').item.json.id }}"
+                                         "method":  "POST",
+                                         "url":  "={{ 'https://SEU_DOMINIO_EVOLUTION/chat/getBase64FromMediaMessage/' + dados.item.json.instancia }}",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "apikey",
+                                                                                         "value":  "SUA_API_KEY_EVOLUTION"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "sendBody":  true,
+                                         "contentType":  "json",
+                                         "bodyParameters":  {
+                                                                "parameters":  [
+                                                                                   {
+                                                                                       "name":  "message",
+                                                                                       "value":  "={{ { key: { id: dados.item.json.id } } }}"
+                                                                                   },
+                                                                                   {
+                                                                                       "name":  "convertToMp4",
+                                                                                       "value":  false
+                                                                                   }
+                                                                               ]
+                                                            },
+                                         "options":  {
+
+                                                     }
                                      },
-                      "type":  "n8n-nodes-evolution-api.evolutionApi",
-                      "typeVersion":  1,
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.2,
                       "position":  [
                                        -1872,
                                        608
                                    ],
                       "id":  "20300471-6539-4d28-9235-b5ec299fd67e",
-                      "name":  "Obter Midia em Base64",
-                      "credentials":  {
-                                          "evolutionApi":  {
-                                                               "id":  "pXMX5bykkTaDf7hr",
-                                                               "name":  "evolution"
-                                                           }
-                                      }
+                      "name":  "Obter Midia em Base64"
                   },
                   {
                       "parameters":  {
